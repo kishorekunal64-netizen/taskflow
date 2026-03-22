@@ -9,6 +9,30 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: taskflow_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: taskflow123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: taskflow_db
+      DB_USER: postgres
+      DB_PASSWORD: taskflow123
+      NODE_ENV: test
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,6 +41,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - run: cd backend && npm ci
+      - run: cd backend && npx pg --command "CREATE TABLE IF NOT EXISTS tasks (id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, done BOOLEAN DEFAULT false, priority VARCHAR(10) DEFAULT 'medium', due_date DATE, created_at TIMESTAMP DEFAULT NOW());" 2>/dev/null || true
       - run: cd backend && npm test
 
   build:
