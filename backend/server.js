@@ -3,6 +3,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const helmet = require('helmet');
+const Joi = require('joi');
 
 const app = express();
 
@@ -16,6 +17,17 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'taskflow_db',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'taskflow123'
+});
+
+const createTaskSchema = Joi.object({
+  title: Joi.string().required().messages({
+    'any.required': 'title is required',
+    'string.empty': 'title is required'
+  }),
+  priority: Joi.string().valid('low', 'medium', 'high').default('medium').messages({
+    'any.only': 'priority must be low, medium, or high'
+  }),
+  due_date: Joi.string().isoDate().allow(null, '').default(null)
 });
 
 // Health check
@@ -35,12 +47,12 @@ app.get('/api/tasks', async (req, res) => {
 
 // POST create task
 app.post('/api/tasks', async (req, res) => {
+  const { error, value } = createTaskSchema.validate(req.body, { abortEarly: true });
+  if (error) return res.status(400).json({ error: error.details[0].message });
   try {
-    const { title, priority = 'medium', due_date = null } = req.body;
-    if (!title) return res.status(400).json({ error: 'title is required' });
     const result = await pool.query(
       'INSERT INTO tasks (title, priority, due_date) VALUES ($1, $2, $3) RETURNING *',
-      [title, priority, due_date]
+      [value.title, value.priority, value.due_date]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

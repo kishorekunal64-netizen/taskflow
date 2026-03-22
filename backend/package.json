@@ -10,16 +10,17 @@
     "test": "jest --passWithNoTests --forceExit"
   },
   "dependencies": {
-    "express": "^5.2.1",
-    "pg": "^8.20.0",
-    "dotenv": "^16.0.0",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^5.2.1",
     "helmet": "^7.0.0",
     "joi": "^17.9.0",
     "jsonwebtoken": "^9.0.0",
-    "bcryptjs": "^2.4.3"
+    "pg": "^8.20.0"
   },
   "devDependencies": {
+    "fast-check": "^4.6.0",
     "jest": "^30.3.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.0.0"
