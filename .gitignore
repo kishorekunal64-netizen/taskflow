@@ -24,6 +24,8 @@ compiled/
 jobs_state.json
 editor_clips.json
 generation.lock
+analytics_data.json
+shorts/
 
 # Word doc temp files
 ~$*.docx

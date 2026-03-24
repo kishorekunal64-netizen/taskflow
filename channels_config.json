@@ -1,0 +1,11 @@
+{
+  "channels": [
+    {"name": "Village Stories",    "slug": "village_channel",     "category": "village"},
+    {"name": "Devotional Kahani",  "slug": "devotional_channel",  "category": "devotional"},
+    {"name": "Motivational Hindi", "slug": "motivational_channel","category": "motivational"},
+    {"name": "Love Stories",       "slug": "love_channel",        "category": "love"},
+    {"name": "Mystery Kahani",     "slug": "mystery_channel",     "category": "mystery"},
+    {"name": "Family Stories",     "slug": "family_channel",      "category": "family"},
+    {"name": "General RAGAI",      "slug": "general_channel",     "category": "general"}
+  ]
+}
