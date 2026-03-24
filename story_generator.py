@@ -69,12 +69,14 @@ class StoryGenerator:
         character_names: Dict[str, str],
         scene_count: int = 8,
         target_duration_minutes: float = 0.0,
+        trend_context: str = "",
     ) -> List[Scene]:
         """Call Groq to generate 5-12 scenes for *topic*.
 
         Applies character name substitution when *character_names* is non-empty.
+        When *trend_context* is provided, viral angles are prepended to the prompt.
         """
-        prompt = self._build_prompt(topic, audience, style, language, character_names, scene_count, target_duration_minutes)
+        prompt = self._build_prompt(topic, audience, style, language, character_names, scene_count, target_duration_minutes, trend_context)
         raw = self._call_groq(prompt, self.model)
         scenes = self._parse_llm_response(raw, scene_count)
 
@@ -124,6 +126,7 @@ class StoryGenerator:
         character_names: Optional[Dict[str, str]] = None,
         scene_count: int = 8,
         target_duration_minutes: float = 0.0,
+        trend_context: str = "",
     ) -> str:
         """Build the system+user prompt sent to Groq."""
         lang_name = _LANGUAGE_NAMES.get(language, language.value)
@@ -151,8 +154,17 @@ class StoryGenerator:
                 f'  "duration": scene duration in seconds (integer, between 4 and 10)'
             )
 
+        # Viral injection prefix when trend_context is provided
+        viral_prefix = ""
+        if trend_context:
+            viral_prefix = (
+                f"Make this story viral by incorporating these trending angles: {trend_context}. "
+                f"Use emotional hooks. Start with a shocking or curious opening line.\n\n"
+            )
+
         prompt = (
             f"You are a professional cinematic scriptwriter.\n\n"
+            f"{viral_prefix}"
             f"Create a structured video story for the following topic: \"{topic}\"\n\n"
             f"Audience: {audience.value} — {audience_instruction}\n"
             f"Visual Style: {style_name}\n"

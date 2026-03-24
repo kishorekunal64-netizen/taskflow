@@ -18,6 +18,16 @@ venv/
 tmp/
 output/
 logs/
+compiled/
+
+# Runtime state files (regenerated automatically)
+jobs_state.json
+editor_clips.json
+generation.lock
+
+# Word doc temp files
+~$*.docx
+*.docx
 
 # FFmpeg local build (large binaries — install separately)
 ffmpeg-8.1-essentials_build/

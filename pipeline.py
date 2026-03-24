@@ -93,13 +93,13 @@ class Pipeline:
         scene: Scene,
         style: VisualStyle,
     ) -> Path:
-        """Re-generate the image for a single scene using the active provider chain.
+        """Re-generate the image for a single scene and re-encode its clip.
 
         Called from the GUI after a full pipeline run when the user wants to
         swap out one scene's image without re-running everything.
 
         Args:
-            scene: The Scene object whose image_path will be updated in-place.
+            scene: The Scene object whose image_path and clip_path will be updated.
             style: The resolved VisualStyle used for the original run.
 
         Returns:
@@ -110,6 +110,11 @@ class Pipeline:
         scene.image_path = new_path
         logger.info("Scene %d image replaced: %s [provider: %s]",
                     int(scene.number), new_path, self.image_generator.active_provider)
+
+        # Re-encode the scene clip so the new image appears in the final video
+        logger.info("Re-encoding scene %d clip with new image", int(scene.number))
+        self.video_assembler.regenerate_scene_clip(scene, self.config)
+
         return new_path
 
     # ------------------------------------------------------------------
@@ -210,6 +215,7 @@ class Pipeline:
                         character_names=self.config.character_names,
                         scene_count=self.config.scene_count,
                         target_duration_minutes=getattr(self.config, "target_duration_minutes", 0.0),
+                        trend_context=getattr(self.config, "trend_context", ""),
                     )
                     logger.info("Generated %d scenes from topic", len(scenes))
             except Exception as exc:

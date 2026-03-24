@@ -7,12 +7,49 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import socket
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from models import Language, Scene, VoiceSynthesisError
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Edge-TTS connectivity probe
+# ---------------------------------------------------------------------------
+
+# Edge-TTS connects to this host for synthesis
+_EDGE_TTS_HOST = "speech.platform.bing.com"
+_EDGE_TTS_PORT = 443
+_PROBE_TIMEOUT = 5.0
+
+_edge_tts_reachable: Optional[bool] = None  # cached after first probe
+
+
+def _probe_edge_tts() -> bool:
+    """Return True if the Edge-TTS endpoint is reachable on this network.
+
+    Some WiFi routers / ISPs block speech.platform.bing.com. This probe
+    detects that at startup so RAGAI can auto-switch to gTTS instead of
+    failing mid-generation.
+    """
+    global _edge_tts_reachable
+    if _edge_tts_reachable is not None:
+        return _edge_tts_reachable
+    try:
+        with socket.create_connection((_EDGE_TTS_HOST, _EDGE_TTS_PORT), timeout=_PROBE_TIMEOUT):
+            _edge_tts_reachable = True
+            logger.info("Edge-TTS connectivity: OK (%s:%d reachable)", _EDGE_TTS_HOST, _EDGE_TTS_PORT)
+    except OSError:
+        _edge_tts_reachable = False
+        logger.warning(
+            "Edge-TTS connectivity: BLOCKED (%s:%d unreachable) — auto-switching to gTTS. "
+            "Use mobile hotspot for natural voice.",
+            _EDGE_TTS_HOST, _EDGE_TTS_PORT,
+        )
+    return _edge_tts_reachable
+
 
 # ---------------------------------------------------------------------------
 # Task 7.1 — VOICE_MAP for all 10 supported languages
@@ -54,9 +91,19 @@ class VoiceSynthesizer:
     MAX_SEGMENT_CHARS = 500
 
     def __init__(self, use_edge_tts: bool, work_dir: Path) -> None:
-        self.use_edge_tts = use_edge_tts
         self.work_dir = work_dir
         self.work_dir.mkdir(parents=True, exist_ok=True)
+
+        # If Edge-TTS is requested, probe connectivity first.
+        # Auto-switch to gTTS if the endpoint is blocked (common on some WiFi).
+        if use_edge_tts and not _probe_edge_tts():
+            logger.warning(
+                "Edge-TTS requested but endpoint is unreachable — using gTTS fallback. "
+                "Switch to mobile hotspot to restore natural voice."
+            )
+            self.use_edge_tts = False
+        else:
+            self.use_edge_tts = use_edge_tts
 
     # ------------------------------------------------------------------
     # Task 7.2 helpers

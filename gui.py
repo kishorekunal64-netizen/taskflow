@@ -33,8 +33,16 @@ from models import (
 )
 from pipeline import Pipeline
 
+# Trend Booster — lazy imports (graceful if not installed)
+try:
+    from trend_fetcher import fetch_trends, generate_hashtags
+    from viral_scorer import score_topic
+    _TREND_BOOSTER_AVAILABLE = True
+except ImportError:
+    _TREND_BOOSTER_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
-# Colour system
+# Colour system — Dark theme
 # ---------------------------------------------------------------------------
 BG          = "#080b12"   # deep space black
 BG2         = "#0e1420"   # card background
@@ -50,7 +58,7 @@ PURPLE      = "#8b5cf6"
 YELLOW_N    = "#ffd700"
 
 FG          = "#e8f0ff"
-FG2         = "#6b7a99"
+FG2         = "#a0aec0"   # bumped up from #6b7a99 for readability
 FG3         = "#3a4560"
 
 FONT_HERO   = ("Segoe UI", 26, "bold")
@@ -196,7 +204,7 @@ class _AnimatedHeader(tk.Canvas):
             x1 = int((i+1) * w / bands) + 1
             self.create_rectangle(x0, 0, x1, h, fill=color, outline="")
 
-        # Dark overlay
+        # Subtle light overlay to soften gradient — removed, keep original dark overlay
         self.create_rectangle(0, 0, w, h, fill=BG, stipple="gray50", outline="")
 
         # Glowing bottom border
@@ -331,7 +339,7 @@ class _GlowButton(tk.Frame):
         self._btn = tk.Button(
             self, text=text, command=command,
             bg=bg_btn, fg=fg_btn,
-            activebackground=color, activeforeground=BG,
+            activebackground=color, activeforeground="#ffffff",
             relief=tk.FLAT, bd=0, padx=16, pady=9,
             font=font, cursor="hand2", **inner_kw,
         )
@@ -342,7 +350,7 @@ class _GlowButton(tk.Frame):
 
     def _on_enter(self, _=None):
         self._active = True
-        self._btn.config(bg=self._color, fg=BG)
+        self._btn.config(bg=self._color, fg="#ffffff")
         self._pulse()
 
     def _on_leave(self, _=None):
@@ -419,7 +427,7 @@ class _StepTracker(tk.Canvas):
             r = 14
             if done:
                 self.create_oval(cx-r, cy-r, cx+r, cy+r, fill=CYAN, outline=CYAN)
-                self.create_text(cx, cy, text="✓", font=("Segoe UI", 9, "bold"), fill=BG)
+                self.create_text(cx, cy, text="✓", font=("Segoe UI", 9, "bold"), fill="#ffffff")
             elif active:
                 # Glowing active circle
                 for glow in range(4, 0, -1):
@@ -460,7 +468,7 @@ class _PillSelector(tk.Frame):
                 self, text=label, font=("Segoe UI", 9, "bold"),
                 bg=BG3, fg=FG2, relief=tk.FLAT, bd=0,
                 padx=14, pady=7, cursor="hand2",
-                activebackground=color, activeforeground=BG,
+                activebackground=color, activeforeground="#ffffff",
                 command=lambda v=val: self._select(v),
             )
             btn.pack(side=tk.LEFT, padx=(0, 4))
@@ -475,7 +483,7 @@ class _PillSelector(tk.Frame):
         cur = self._var.get()
         for val, btn in self._btns.items():
             if val == cur:
-                btn.config(bg=self._color, fg=BG)
+                btn.config(bg=self._color, fg="#ffffff")
             else:
                 btn.config(bg=BG3, fg=FG2)
 
@@ -494,7 +502,7 @@ class _ChipSelector(tk.Frame):
                 self, text=str(val), font=("Segoe UI", 11, "bold"),
                 bg=BG3, fg=FG2, relief=tk.FLAT, bd=0,
                 width=3, pady=6, cursor="hand2",
-                activebackground=color, activeforeground=BG,
+                activebackground=color, activeforeground="#ffffff",
                 command=lambda v=val: self._select(v),
             )
             btn.pack(side=tk.LEFT, padx=(0, 6))
@@ -509,7 +517,7 @@ class _ChipSelector(tk.Frame):
         cur = self._var.get()
         for val, btn in self._btns.items():
             btn.config(bg=self._color if val == cur else BG3,
-                       fg=BG if val == cur else FG2)
+                       fg="#ffffff" if val == cur else FG2)
 
 
 # ---------------------------------------------------------------------------
@@ -696,6 +704,89 @@ class RAGAIApp(tk.Tk):
         self._source_var.trace_add("write", lambda *_: self._on_source_change())
         self._on_source_change()
 
+        # ── Trend Booster ─────────────────────────────────────────────
+        tb = _card(sf, "🔥  TREND BOOSTER", ORANGE)
+        tb.master.pack(fill=tk.X, **PAD)
+
+        # Topic input inside Trend Booster (synced with _topic_var)
+        tb_topic_row = tk.Frame(tb, bg=BG2)
+        tb_topic_row.pack(fill=tk.X, pady=(0, 8))
+        tk.Label(tb_topic_row, text="Topic:", font=FONT_LABEL, fg=FG, bg=BG2).pack(side=tk.LEFT, padx=(0, 8))
+        # _topic_var is already created by _build_source_inputs above — share it
+        _entry(tb_topic_row, self._topic_var).pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Row 1: Fetch button + status
+        tb_row1 = tk.Frame(tb, bg=BG2)
+        tb_row1.pack(fill=tk.X, pady=(0, 6))
+        _GlowButton(tb_row1, "⚡ Fetch Trends", self._on_fetch_trends,
+                    color=ORANGE, bg_btn=BG3, fg_btn=ORANGE).pack(side=tk.LEFT, padx=(0, 10))
+        self._tb_status_var = tk.StringVar(value="Enter topic above and click Fetch Trends")
+        tk.Label(tb_row1, textvariable=self._tb_status_var,
+                 font=FONT_SMALL, fg=FG, bg=BG2, anchor="w").pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Row 2: Trending angles dropdown
+        tb_row2 = tk.Frame(tb, bg=BG2)
+        tb_row2.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(tb_row2, text="Trending Angle:", font=FONT_LABEL, fg=FG, bg=BG2).pack(side=tk.LEFT, padx=(0, 8))
+        self._tb_angle_var = tk.StringVar(value="— fetch trends first —")
+        self._tb_angle_combo = ttk.Combobox(
+            tb_row2, textvariable=self._tb_angle_var,
+            values=[], state="readonly", width=50,
+            font=FONT_LABEL,
+        )
+        self._tb_angle_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._tb_angle_combo.bind("<<ComboboxSelected>>", lambda _: self._on_angle_selected())
+
+        # Style the combobox for dark theme
+        style = ttk.Style()
+        style.configure("TCombobox",
+                         fieldbackground=BG3, background=BG3,
+                         foreground=FG, selectbackground=ORANGE,
+                         selectforeground=BG)
+        self._tb_angle_combo.configure(style="TCombobox")
+
+        # Row 3: Viral score meter
+        tb_row3 = tk.Frame(tb, bg=BG2)
+        tb_row3.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(tb_row3, text="Viral Score:", font=FONT_LABEL, fg=FG, bg=BG2).pack(side=tk.LEFT, padx=(0, 8))
+        self._tb_score_var = tk.StringVar(value="—")
+        self._tb_score_label = tk.Label(
+            tb_row3, textvariable=self._tb_score_var,
+            font=("Segoe UI", 11, "bold"), fg=FG, bg=BG2, width=4,
+        )
+        self._tb_score_label.pack(side=tk.LEFT, padx=(0, 10))
+        self._tb_score_bar = tk.Canvas(tb_row3, bg=BG3, height=14, width=200,
+                                       highlightthickness=1, highlightbackground=BORDER)
+        self._tb_score_bar.pack(side=tk.LEFT)
+
+        # Row 4: Suggested hook
+        tk.Label(tb, text="Suggested Hook:", font=FONT_LABEL, fg=FG, bg=BG2).pack(anchor="w", pady=(4, 0))
+        self._tb_hook_var = tk.StringVar()
+        _entry(tb, self._tb_hook_var).pack(fill=tk.X, pady=(2, 0))
+
+        # Row 5: Auto-boost checkbox
+        tb_row5 = tk.Frame(tb, bg=BG2)
+        tb_row5.pack(fill=tk.X, pady=(6, 4))
+        self._tb_autoboost_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            tb_row5, text="🚀  Auto-boost  (inject trending angles into story prompt)",
+            variable=self._tb_autoboost_var,
+            font=FONT_LABEL, fg=ORANGE, bg=BG2,
+            activeforeground=ORANGE, activebackground=BG2,
+            selectcolor=BG3,
+        ).pack(anchor="w")
+
+        # Row 6: Hashtags
+        self._tb_hashtags_var = tk.StringVar(value="")
+        tk.Label(tb, text="Hashtags:", font=FONT_LABEL, fg=FG, bg=BG2).pack(anchor="w", pady=(4, 0))
+        tk.Label(tb, textvariable=self._tb_hashtags_var,
+                 font=FONT_SMALL, fg=CYAN, bg=BG2,
+                 wraplength=600, justify="left").pack(anchor="w", pady=(2, 4))
+
+        # Internal state
+        self._tb_trends: list[str] = []
+        self._tb_viral_score = None  # ViralScore | None
+
         # ── Row: Audience · Language · Style ─────────────────────────
         row3 = tk.Frame(sf, bg=BG)
         row3.pack(fill=tk.X, **PAD)
@@ -728,7 +819,7 @@ class RAGAIApp(tk.Tk):
             btn = tk.Label(
                 dur_row, text=label,
                 font=FONT_LABEL,
-                fg=BG if is_sel else FG2,
+                fg="#ffffff" if is_sel else FG2,
                 bg=GREEN_N if is_sel else BG3,
                 padx=10, pady=4, cursor="hand2",
                 relief=tk.FLAT,
@@ -890,6 +981,93 @@ class RAGAIApp(tk.Tk):
         else:
             self._image_frame.pack(fill=tk.X)
             self._image_ctx_frame.pack(fill=tk.X, pady=(6, 0))
+
+    # ------------------------------------------------------------------
+    # Trend Booster handlers
+    # ------------------------------------------------------------------
+    def _on_fetch_trends(self):
+        """Fetch trending angles in a background thread and update UI."""
+        if not _TREND_BOOSTER_AVAILABLE:
+            messagebox.showwarning(
+                "Trend Booster",
+                "Required packages not installed.\nRun: pip install pytrends feedparser"
+            )
+            return
+
+        topic = self._topic_var.get().strip() if hasattr(self, "_topic_var") else ""
+        # Use "india trending" as fallback topic so fetch always works
+        fetch_topic = topic if topic else "india trending"
+
+        self._tb_status_var.set("⏳ Fetching trends...")
+
+        def _worker():
+            try:
+                trends = fetch_trends(fetch_topic)
+                hashtags = generate_hashtags(fetch_topic, trends)
+                viral = score_topic(fetch_topic, trends)
+                self.after(0, lambda: self._apply_trend_results(trends, hashtags, viral))
+            except Exception as exc:
+                self.after(0, lambda: self._tb_status_var.set(f"⚠ Error: {exc}"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _apply_trend_results(self, trends, hashtags, viral):
+        """Apply fetched trend data to the UI (called on main thread)."""
+        self._tb_trends = trends
+
+        # Update dropdown
+        angles = trends if trends else ["No trends found — using fallback"]
+        self._tb_angle_combo.configure(values=angles)
+        self._tb_angle_combo.current(0)
+        self._tb_angle_var.set(angles[0])
+
+        # Update viral score
+        self._tb_viral_score = viral
+        score_colors = {"red": "#ff4444", "yellow": YELLOW_N, "green": GREEN_N}
+        color = score_colors.get(viral.score_color, FG2)
+        self._tb_score_var.set(f"{viral.score}/10")
+        self._tb_score_label.configure(fg=color)
+
+        # Draw score bar
+        self._tb_score_bar.delete("all")
+        bar_w = int(200 * viral.score / 10)
+        self._tb_score_bar.create_rectangle(0, 0, bar_w, 14, fill=color, outline="")
+
+        # Update hook
+        self._tb_hook_var.set(viral.hook_line)
+
+        # Update hashtags
+        self._tb_hashtags_var.set("  ".join(hashtags))
+
+        self._tb_status_var.set(
+            f"✅ {len(trends)} trends fetched · Emotion: {viral.dominant_emotion}"
+        )
+
+    def _on_angle_selected(self):
+        """When user picks a different angle, re-score and update hook."""
+        if not _TREND_BOOSTER_AVAILABLE or not self._tb_trends:
+            return
+        topic = self._topic_var.get().strip() if hasattr(self, "_topic_var") else ""
+        selected = self._tb_angle_var.get()
+        viral = score_topic(topic, [selected])
+        self._tb_hook_var.set(viral.hook_line)
+
+    def _get_trend_context(self) -> str:
+        """Return trend context string if auto-boost is enabled and trends exist."""
+        try:
+            if not self._tb_autoboost_var.get():
+                return ""
+            trends = self._tb_trends
+            hook = self._tb_hook_var.get().strip()
+            if not trends:
+                return ""
+            parts = [self._tb_angle_var.get()] + [t for t in trends if t != self._tb_angle_var.get()]
+            context = "; ".join(parts[:3])
+            if hook:
+                context += f". Hook: {hook}"
+            return context
+        except AttributeError:
+            return ""
 
     # ------------------------------------------------------------------
     # Scenes tab — per-scene image preview + re-generate
@@ -1127,7 +1305,7 @@ class RAGAIApp(tk.Tk):
         self._duration_var.set(val)
         for v, btn in self._dur_btns.items():
             selected = v == val
-            btn.config(fg=BG if selected else FG2,
+            btn.config(fg="#ffffff" if selected else FG2,
                        bg=GREEN_N if selected else BG3)
         if val == 0.0:
             self._dur_hint.config(text="Auto: LLM decides scene durations")
@@ -1188,6 +1366,7 @@ class RAGAIApp(tk.Tk):
             target_duration_minutes=self._duration_var.get(),
             custom_music_path=self._bgm_path or None,
             hf_token=self.app_config.hf_token,
+            trend_context=self._get_trend_context(),
         )
         self._output_dir = output_dir
         self._start_pipeline(cfg)

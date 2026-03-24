@@ -1,4 +1,4 @@
-# RAGAI Video Factory — Python dependencies
+# RAGAI Video Factory + Editor V2 — Python dependencies
 # Install: pip install -r requirements.txt
 
 # Core API clients
@@ -16,8 +16,15 @@ edge-tts>=6.1.9
 gTTS>=2.5.0
 pydub>=0.25.1
 
+# Trend Booster
+pytrends>=4.9.0
+feedparser>=6.0.0
+
+# RAGAI Editor V2 — folder watching + desktop notifications
+watchdog>=3.0.0
+plyer>=2.1.0
+
 # Optional: Intel Arc GPU local image generation (offline, no API key)
 # Uncomment to enable the OpenVINO provider (4th fallback in image chain)
-# pip install "optimum[openvino]" diffusers accelerate
 # optimum[openvino]>=1.18.0
 # diffusers>=0.27.0

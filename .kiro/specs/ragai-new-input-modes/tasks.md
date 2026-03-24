@@ -19,15 +19,15 @@ Extend the RAGAI Video Factory with two new input modes — Audio Storytelling (
     - Implement `get_word_timestamps(audio_path)` — use `verbose_json` response format, return `List[WordTimestamp]` (empty list if not provided)
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.5, 9.1, 9.3_
 
-  - [~] 2.2 Write property test for audio extension validation (Property 1)
+  - [ ] 2.2 Write property test for audio extension validation (Property 1)
     - **Property 1: Audio file extension validation accepts only supported formats**
     - **Validates: Requirements 1.3, 1.4**
 
-  - [~] 2.3 Write property test for Groq error codes raising AudioTranscriptionError (Property 3)
+  - [ ] 2.3 Write property test for Groq error codes raising AudioTranscriptionError (Property 3)
     - **Property 3: Groq Whisper API error codes produce AudioTranscriptionError**
     - **Validates: Requirements 2.3**
 
-  - [~] 2.4 Write property test for supported format acceptance (Property 4)
+  - [ ] 2.4 Write property test for supported format acceptance (Property 4)
     - **Property 4: AudioTranscriber accepts all supported audio formats without format rejection**
     - **Validates: Requirements 2.5**
 
@@ -35,11 +35,11 @@ Extend the RAGAI Video Factory with two new input modes — Audio Storytelling (
     - Implement `split(audio_path, scenes, work_dir)` using pydub — split audio into per-scene segments based on `scene.duration_seconds`, assign `scene.audio_path`, pad final segment with silence if source is shorter than total duration
     - _Requirements: 3.2, 3.3, 3.4_
 
-  - [~] 2.6 Write property test for audio splitting producing N segments (Property 5)
+  - [ ] 2.6 Write property test for audio splitting producing N segments (Property 5)
     - **Property 5: Audio splitting produces exactly N segments with audio_path assigned**
     - **Validates: Requirements 3.2, 3.3**
 
-  - [~] 2.7 Write unit tests for AudioTranscriber and AudioSplitter
+  - [ ] 2.7 Write unit tests for AudioTranscriber and AudioSplitter
     - Test `transcribe()` with mocked Groq API responses (success, 4xx, 5xx, network error)
     - Test `get_word_timestamps()` with mocked verbose_json response
     - Test `split()` with a real short WAV file — verify segment count and file existence

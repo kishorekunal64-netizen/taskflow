@@ -1,0 +1,11 @@
+{
+  "output_dir": "./output",
+  "compiled_dir": "./compiled",
+  "default_quality": "cinema",
+  "default_language": "hi",
+  "enable_qsv": true,
+  "hook_enabled": true,
+  "outro_enabled": true,
+  "auto_thumbnail": true,
+  "auto_titles": true
+}

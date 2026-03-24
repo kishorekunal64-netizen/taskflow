@@ -134,6 +134,37 @@ def _check_music_library() -> tuple[bool, str, str]:
     return ok, f"Music library ({count}/{EXPECTED_MUSIC_COUNT} tracks in {MUSIC_DIR}/)", hint
 
 
+def _check_openvino() -> tuple[bool, str, str]:
+    """Check if OpenVINO / optimum-intel is installed for offline image generation."""
+    try:
+        importlib.import_module("optimum.intel")
+        importlib.import_module("diffusers")
+        return (True, "OpenVINO (optimum[openvino] + diffusers)", "")
+    except ImportError:
+        return (
+            False,
+            "OpenVINO (optimum[openvino] + diffusers) — optional",
+            "Run: pip install \"optimum[openvino]\" diffusers accelerate\n"
+            "  Only needed for offline local image generation on Intel Arc GPU.",
+        )
+
+
+def _check_edge_tts_connectivity() -> tuple[bool, str, str]:
+    """Check if Edge-TTS endpoint is reachable on the current network."""
+    import socket
+    host, port = "speech.platform.bing.com", 443
+    try:
+        with socket.create_connection((host, port), timeout=5):
+            return (True, f"Edge-TTS connectivity ({host}:{port})", "")
+    except OSError:
+        return (
+            False,
+            f"Edge-TTS connectivity ({host}:{port}) — BLOCKED",
+            "Edge-TTS is blocked on this network. RAGAI will auto-switch to gTTS.\n"
+            "  To restore natural voice: switch to mobile hotspot, or set USE_EDGE_TTS=false in .env.",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -161,6 +192,12 @@ def run_diagnostics() -> bool:
 
     # Music library
     all_checks.append(_check_music_library())
+
+    # OpenVINO (optional)
+    all_checks.append(_check_openvino())
+
+    # Edge-TTS network connectivity
+    all_checks.append(_check_edge_tts_connectivity())
 
     # Print results
     passed = 0
