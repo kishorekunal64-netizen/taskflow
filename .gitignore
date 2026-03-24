@@ -1,3 +1,27 @@
+# Node
 node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Environment
 .env
+.env*.txt
 *.log
+
+# RAGAI runtime artifacts
+tmp/
+output/
+logs/
+
+# FFmpeg local build (large binaries — install separately)
+ffmpeg-8.1-essentials_build/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Code Quality Reviewer",
+  "description": "Analyzes modified source code files for potential improvements including code smells, design patterns, and best practices. Generates suggestions for readability, maintainability, and performance.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source code file was just modified. Please analyze the changes for potential improvements. Look for: code smells (duplicated logic, long functions, unclear naming), design pattern opportunities, best practices violations, readability issues, maintainability concerns, and performance optimizations. Provide concise, actionable suggestions while being careful not to change existing functionality."
+  }
+}

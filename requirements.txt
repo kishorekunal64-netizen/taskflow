@@ -1,0 +1,23 @@
+# RAGAI Video Factory — Python dependencies
+# Install: pip install -r requirements.txt
+
+# Core API clients
+groq>=0.9.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Image / video processing
+Pillow>=10.0.0
+numpy>=1.26.0
+opencv-python>=4.9.0
+
+# Audio
+edge-tts>=6.1.9
+gTTS>=2.5.0
+pydub>=0.25.1
+
+# Optional: Intel Arc GPU local image generation (offline, no API key)
+# Uncomment to enable the OpenVINO provider (4th fallback in image chain)
+# pip install "optimum[openvino]" diffusers accelerate
+# optimum[openvino]>=1.18.0
+# diffusers>=0.27.0
