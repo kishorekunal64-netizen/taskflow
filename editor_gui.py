@@ -1,12 +1,11 @@
-﻿"""
+"""
 editor_gui.py - Main Tkinter GUI for RAGAI Editor V2.
 
 Layout:
   LEFT   - Clip Library (thumbnail grid, search/filter)
-  CENTER - Visual Timeline editor
-  RIGHT  - Export settings + EXPORT button + AUTO MODE toggle
+  CENTER - Visual Timeline editor with total duration display
+  RIGHT  - Export settings, estimates, PREVIEW button, EXPORT, AUTO MODE
 """
-
 from __future__ import annotations
 
 import logging
@@ -22,6 +21,7 @@ from timeline import TimelineCanvas
 from assembler import Assembler
 from auto_pipeline import AutoPipeline
 from watcher import OutputWatcher
+from smart_compiler import SmartCompiler
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +45,16 @@ FONT_SMALL = ("Segoe UI", 8)
 
 
 def _btn(parent, text, cmd, color=CYAN, fg=BG, **kw):
-    return tk.Button(parent, text=text, command=cmd, bg=color, fg=fg,
-                     font=FONT_BTN, relief="flat", padx=10, pady=4,
-                     activebackground=color, activeforeground=fg,
-                     cursor="hand2", **kw)
+    return tk.Button(
+        parent, text=text, command=cmd, bg=color, fg=fg,
+        font=FONT_BTN, relief="flat", padx=10, pady=4,
+        activebackground=color, activeforeground=fg,
+        cursor="hand2", **kw
+    )
 
 
 class ClipLibraryPanel(tk.Frame):
-    """Left panel: scrollable thumbnail grid with search."""
+    """Left panel: scrollable thumbnail grid with search/filter."""
 
     THUMB_W = 118
     THUMB_H = 66
@@ -71,10 +73,11 @@ class ClipLibraryPanel(tk.Frame):
                  font=FONT_TITLE).pack(fill="x", padx=8, pady=(8, 2))
         sf = tk.Frame(self, bg=BG3)
         sf.pack(fill="x", padx=6, pady=2)
-        tk.Label(sf, text="Search:", bg=BG3, fg=FG2, font=FONT_LABEL).pack(side="left", padx=4)
+        tk.Label(sf, text="Search:", bg=BG3, fg=FG2,
+                 font=FONT_LABEL).pack(side="left", padx=4)
         tk.Entry(sf, textvariable=self._filter_var, bg=BG3, fg=FG,
-                 insertbackground=FG, relief="flat", font=FONT_LABEL).pack(
-            side="left", fill="x", expand=True, padx=2)
+                 insertbackground=FG, relief="flat",
+                 font=FONT_LABEL).pack(side="left", fill="x", expand=True, padx=2)
         self._filter_var.trace_add("write", lambda *_: self._refresh())
         self._canvas = tk.Canvas(self, bg=BG2, highlightthickness=0)
         sb = ttk.Scrollbar(self, orient="vertical", command=self._canvas.yview)
@@ -83,10 +86,14 @@ class ClipLibraryPanel(tk.Frame):
         sb.pack(side="right", fill="y")
         self._inner = tk.Frame(self._canvas, bg=BG2)
         self._win_id = self._canvas.create_window((0, 0), window=self._inner, anchor="nw")
-        self._inner.bind("<Configure>",
-                         lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all")))
-        self._canvas.bind("<Configure>",
-                          lambda e: self._canvas.itemconfig(self._win_id, width=e.width))
+        self._inner.bind(
+            "<Configure>",
+            lambda e: self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+        )
+        self._canvas.bind(
+            "<Configure>",
+            lambda e: self._canvas.itemconfig(self._win_id, width=e.width)
+        )
         self._status = tk.Label(self, text="No clips", bg=BG2, fg=FG3, font=FONT_SMALL)
         self._status.pack(fill="x", padx=8, pady=2)
 
@@ -96,9 +103,10 @@ class ClipLibraryPanel(tk.Frame):
 
     def _refresh(self):
         q = self._filter_var.get().lower()
-        filtered = [c for c in self._clips
-                    if not q or q in c.topic.lower()
-                    or any(q in t.lower() for t in c.tags)]
+        filtered = [
+            c for c in self._clips
+            if not q or q in c.topic.lower() or any(q in t.lower() for t in c.tags)
+        ]
         for w in self._inner.winfo_children():
             w.destroy()
         self._thumb_refs.clear()
@@ -131,20 +139,23 @@ class ClipLibraryPanel(tk.Frame):
                  font=FONT_SMALL).pack()
         if clip.tags:
             tk.Label(card, text=" ".join(clip.tags[:3]), bg=BG3, fg=CYAN,
-                     font=("Segoe UI", 7), wraplength=self.THUMB_W).pack(fill="x", padx=2)
+                     font=("Segoe UI", 7),
+                     wraplength=self.THUMB_W).pack(fill="x", padx=2)
         _btn(card, "+ Add to Timeline", lambda c=clip: self._on_add(c),
              color=GREEN_N, fg=BG).pack(fill="x", padx=4, pady=4)
 
 
 class ExportPanel(tk.Frame):
-    """Right panel: export settings, EXPORT button, AUTO MODE toggle."""
+    """Right panel: export settings, estimates, preview, export, auto mode."""
 
-    def __init__(self, parent, on_export, on_auto_toggle, on_batch_change, **kw):
+    def __init__(self, parent, on_export, on_auto_toggle, on_batch_change,
+                 on_preview=None, **kw):
         super().__init__(parent, bg=BG2, **kw)
-        self._on_export       = on_export
-        self._on_auto_toggle  = on_auto_toggle
+        self._on_export      = on_export
+        self._on_auto_toggle = on_auto_toggle
         self._on_batch_change = on_batch_change
-        self._auto_on         = False
+        self._on_preview     = on_preview
+        self._auto_on        = False
         self._format_var  = tk.StringVar(value="YouTube Long")
         self._quality_var = tk.StringVar(value="Standard 1080p")
         self._fade_var    = tk.BooleanVar(value=True)
@@ -182,17 +193,28 @@ class ExportPanel(tk.Frame):
             p, variable=self._outro_var, bg=BG2, fg=FG2,
             selectcolor=BG3, activebackground=BG2))
 
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=8, pady=8)
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=8, pady=6)
+
+        self._est_lbl = tk.Label(
+            self, text="Duration: --   Size: --",
+            bg=BG2, fg=FG2, font=FONT_SMALL
+        )
+        self._est_lbl.pack(fill="x", padx=8, pady=(0, 4))
+
+        _btn(self, "PREVIEW (fast encode)", self._preview_clicked,
+             color=BG3, fg=CYAN).pack(fill="x", padx=8, pady=2)
         _btn(self, "EXPORT VIDEO", self._on_export,
              color=MAGENTA, fg=FG).pack(fill="x", padx=8, pady=4)
-        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=8, pady=8)
+
+        tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=8, pady=6)
 
         tk.Label(self, text="Auto Mode", bg=BG2, fg=YELLOW_N,
                  font=FONT_TITLE).pack(fill="x", padx=8)
         self._auto_btn = tk.Button(
             self, text="AUTO MODE: OFF", command=self._toggle_auto,
             bg=BG3, fg=FG2, font=FONT_BTN, relief="flat",
-            padx=10, pady=4, cursor="hand2")
+            padx=10, pady=4, cursor="hand2"
+        )
         self._auto_btn.pack(fill="x", padx=8, pady=4)
 
         bf = tk.Frame(self, bg=BG2)
@@ -205,12 +227,19 @@ class ExportPanel(tk.Frame):
         cb.bind("<<ComboboxSelected>>",
                 lambda _: self._on_batch_change(int(self._batch_var.get())))
 
-        self._status_lbl = tk.Label(self, text="Ready", bg=BG2, fg=FG3,
-                                    font=FONT_SMALL, wraplength=190, justify="left")
+        self._status_lbl = tk.Label(
+            self, text="Ready", bg=BG2, fg=FG3,
+            font=FONT_SMALL, wraplength=190, justify="left"
+        )
         self._status_lbl.pack(fill="x", padx=8, pady=6)
 
-    def set_status(self, msg):
+    def set_status(self, msg: str):
         self._status_lbl.config(text=msg)
+
+    def update_estimates(self, duration_s: float, size_mb: float):
+        m = int(duration_s // 60)
+        s = int(duration_s % 60)
+        self._est_lbl.config(text=f"Duration: {m}:{s:02d}   Size: ~{size_mb:.0f} MB")
 
     def get_settings(self):
         return {
@@ -220,6 +249,10 @@ class ExportPanel(tk.Frame):
             "add_hook":  self._hook_var.get(),
             "add_outro": self._outro_var.get(),
         }
+
+    def _preview_clicked(self):
+        if self._on_preview:
+            self._on_preview()
 
     def _toggle_auto(self):
         self._auto_on = not self._auto_on
@@ -243,19 +276,16 @@ class RAGAIEditorApp(tk.Tk):
         self._groq_key     = groq_api_key
         self._ui_queue     = queue.Queue()
         self._hdr_idx      = 0
-
+        self._smart        = SmartCompiler()
         self.title("RAGAI Editor V2")
         self.configure(bg=BG)
         self.geometry("1420x840")
         self.minsize(1100, 680)
-
         self._build_header()
         self._build_body()
         self._build_statusbar()
-
         self._watcher = OutputWatcher(self._output_dir, self._on_new_video)
         self._watcher.start()
-
         self._auto = AutoPipeline(
             clip_manager=self._cm,
             timeline=self._timeline,
@@ -266,7 +296,6 @@ class RAGAIEditorApp(tk.Tk):
             on_export_trigger=self._on_auto_export_done,
             on_status_update=lambda m: self._ui_queue.put(("status", m)),
         )
-
         self.after(400, self._scan_existing)
         self.after(100, self._poll_queue)
         self._animate_header()
@@ -293,12 +322,10 @@ class RAGAIEditorApp(tk.Tk):
     def _build_body(self):
         body = tk.Frame(self, bg=BG)
         body.pack(fill="both", expand=True, padx=4, pady=4)
-
         self._library = ClipLibraryPanel(body, on_add_to_timeline=self._add_to_timeline)
         self._library.pack(side="left", fill="y", padx=(0, 4))
         self._library.config(width=280)
         self._library.pack_propagate(False)
-
         center = tk.Frame(body, bg=BG2)
         center.pack(side="left", fill="both", expand=True, padx=4)
         tk.Label(center, text="Timeline", bg=BG2, fg=CYAN,
@@ -308,12 +335,12 @@ class RAGAIEditorApp(tk.Tk):
         self._dur_lbl = tk.Label(center, text="Total: 0:00",
                                  bg=BG2, fg=FG2, font=FONT_LABEL)
         self._dur_lbl.pack(anchor="e", padx=8, pady=2)
-
         self._export_panel = ExportPanel(
             body,
             on_export=self._start_export,
             on_auto_toggle=self._on_auto_toggle,
             on_batch_change=self._on_batch_change,
+            on_preview=self._start_preview,
         )
         self._export_panel.pack(side="right", fill="y", padx=(4, 0))
         self._export_panel.config(width=230)
@@ -336,7 +363,8 @@ class RAGAIEditorApp(tk.Tk):
     def _import_video(self):
         paths = filedialog.askopenfilenames(
             title="Import video files",
-            filetypes=[("MP4 files", "*.mp4"), ("All files", "*.*")])
+            filetypes=[("MP4 files", "*.mp4"), ("All files", "*.*")]
+        )
         for p in paths:
             self._cm.import_clip(Path(p), on_done=self._on_clip_imported)
 
@@ -349,9 +377,44 @@ class RAGAIEditorApp(tk.Tk):
     def _add_to_timeline(self, clip):
         self._timeline.add_clip(clip)
         self._cm.set_state(clip.clip_id, "in_timeline")
+        self._refresh_estimates()
 
     def _on_timeline_change(self):
         self._dur_lbl.config(text=f"Total: {self._timeline.total_duration_str()}")
+        self._refresh_estimates()
+
+    def _refresh_estimates(self):
+        entries = self._timeline.get_entries()
+        clips = [e.clip for e in entries]
+        dur = self._smart.estimate_duration(clips)
+        quality = self._export_panel.get_settings().get("quality", "Standard 1080p")
+        size_mb = self._smart.estimate_filesize_mb(clips, quality)
+        self._export_panel.update_estimates(dur, size_mb)
+
+    def _start_preview(self):
+        # Generate a fast low-res preview of the current timeline
+        entries = self._timeline.get_entries()
+        if not entries:
+            messagebox.showwarning("Empty Timeline", "Add clips before previewing.")
+            return
+        asm = Assembler()
+        if not asm.is_ready():
+            messagebox.showerror("FFmpeg Missing", "FFmpeg not found.")
+            return
+        self._set_status("Generating preview...")
+        asm.export(
+            entries=entries,
+            topic="preview",
+            output_format="YouTube Long",
+            quality="Standard 1080p",
+            add_fade=False,
+            hook_path=None,
+            outro_path=None,
+            on_progress=lambda pct, msg: self._ui_queue.put(
+                ("status", f"Preview: {msg} ({int(pct*100)}%)")),
+            on_done=lambda p: self._ui_queue.put(("preview_done", p)),
+            on_error=lambda e: self._ui_queue.put(("error", str(e))),
+        )
 
     def _start_export(self):
         entries = self._timeline.get_entries()
@@ -368,7 +431,6 @@ class RAGAIEditorApp(tk.Tk):
         topic      = entries[0].clip.topic or "Compilation"
         hook_path  = None
         outro_path = None
-
         if settings["add_hook"] and self._groq_key:
             try:
                 from hook_generator import HookGenerator
@@ -379,7 +441,6 @@ class RAGAIEditorApp(tk.Tk):
                 hg.generate(topic, len(entries), hook_path)
             except Exception as exc:
                 logger.warning("Hook failed: %s", exc)
-
         if settings["add_outro"]:
             try:
                 from outro_generator import OutroGenerator
@@ -389,7 +450,6 @@ class RAGAIEditorApp(tk.Tk):
                 og.generate(outro_path)
             except Exception as exc:
                 logger.warning("Outro failed: %s", exc)
-
         self._set_status("Exporting compilation...")
         asm.export(
             entries=entries,
@@ -427,8 +487,10 @@ class RAGAIEditorApp(tk.Tk):
                     self._set_status(data)
                 elif event == "export_done":
                     self._set_status(f"Export complete: {data.name}")
-                    messagebox.showinfo("Export Complete",
-                                        f"Compilation saved:\n{data}")
+                    messagebox.showinfo("Export Complete", f"Compilation saved:\n{data}")
+                elif event == "preview_done":
+                    self._set_status(f"Preview ready: {data.name}")
+                    messagebox.showinfo("Preview Ready", f"Preview saved:\n{data}")
                 elif event == "error":
                     self._set_status(f"Error: {data}")
                     messagebox.showerror("Export Error", data)

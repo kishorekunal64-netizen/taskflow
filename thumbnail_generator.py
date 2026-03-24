@@ -1,14 +1,17 @@
 """
-thumbnail_generator.py — Viral thumbnail generator for RAGAI Editor V2.
+thumbnail_generator.py - Viral thumbnail generator for RAGAI Editor V2.
 
-Extracts a frame from the first clip, darkens the background,
-overlays large Hindi title text with glow/shadow effect,
-and saves the result as a JPEG inside the compiled folder.
+3 rotating layout templates:
+  Layout A: large centered Hindi title (dark overlay)
+  Layout B: split layout - left image, right dark panel with text
+  Layout C: emoji row + title with gradient overlay
+
+Font: Noto Sans Devanagari with system font fallback.
 """
-
 from __future__ import annotations
 
 import logging
+import random
 import shutil
 import subprocess
 import tempfile
@@ -19,10 +22,25 @@ logger = logging.getLogger(__name__)
 
 try:
     from PIL import Image, ImageDraw, ImageFilter, ImageFont
-    _PIL_AVAILABLE = True
+    _PIL = True
 except ImportError:
-    _PIL_AVAILABLE = False
-    logger.warning("Pillow not installed — thumbnail generation disabled")
+    _PIL = False
+    logger.warning("Pillow not installed - thumbnail generation disabled")
+
+THUMB_W = 1280
+THUMB_H = 720
+
+_FONTS = [
+    "C:/Windows/Fonts/NotoSansDevanagari-Bold.ttf",
+    "C:/Windows/Fonts/NotoSansDevanagari-Regular.ttf",
+    "C:/Windows/Fonts/mangal.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+    "C:/Windows/Fonts/calibri.ttf",
+    "C:/Windows/Fonts/segoeui.ttf",
+]
+
+_LAYOUTS = ["A", "B", "C"]
+_last_layout: Optional[str] = None
 
 
 def _ffmpeg_path() -> str:
@@ -33,11 +51,96 @@ def _ffmpeg_path() -> str:
     return str(local) if local.exists() else "ffmpeg"
 
 
-class ThumbnailGenerator:
-    """Generates a viral-style YouTube thumbnail from a video clip."""
+def _font(size: int):
+    for path in _FONTS:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
 
-    THUMB_W = 1280
-    THUMB_H = 720
+
+def _wrap(text: str, max_chars: int = 20) -> list:
+    words, lines, line = text.split(), [], []
+    for w in words:
+        line.append(w)
+        if len(" ".join(line)) >= max_chars:
+            lines.append(" ".join(line))
+            line = []
+    if line:
+        lines.append(" ".join(line))
+    return lines[:3]
+
+
+def _pick_layout() -> str:
+    global _last_layout
+    choices = [l for l in _LAYOUTS if l != _last_layout]
+    layout = random.choice(choices)
+    _last_layout = layout
+    return layout
+
+
+def _glow_text(img, text: str, font, cx: int, cy: int):
+    """Draw gold glow + white text at (cx, cy) center-anchored."""
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.text((cx, cy), text, font=font, fill=(255, 180, 0, 100), anchor="mm", align="center")
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=10))
+    img = Image.alpha_composite(img.convert("RGBA"), glow).convert("RGB")
+    d = ImageDraw.Draw(img)
+    for dx, dy in [(-2, -2), (2, 2), (-2, 2), (2, -2)]:
+        d.text((cx + dx, cy + dy), text, font=font, fill=(0, 0, 0), anchor="mm", align="center")
+    d.text((cx, cy), text, font=font, fill=(255, 255, 255), anchor="mm", align="center")
+    return img
+
+
+def _layout_a(img, title: str):
+    """Layout A: large centered title, dark overlay."""
+    dark = Image.new("RGB", img.size, (0, 0, 0))
+    img = Image.blend(img, dark, alpha=0.55)
+    block = "\n".join(_wrap(title, 18))
+    img = _glow_text(img, block, _font(64), THUMB_W // 2, THUMB_H // 2 - 30)
+    ImageDraw.Draw(img).text(
+        (THUMB_W // 2, THUMB_H - 55), "RAGAI Compilation",
+        font=_font(30), fill=(255, 215, 0), anchor="mm"
+    )
+    return img
+
+
+def _layout_b(img, title: str):
+    """Layout B: left image, right dark panel with text."""
+    panel = Image.new("RGBA", (THUMB_W // 2, THUMB_H), (10, 15, 30, 230))
+    result = img.convert("RGBA")
+    result.paste(panel, (THUMB_W // 2, 0), panel)
+    result = result.convert("RGB")
+    block = "\n".join(_wrap(title, 16))
+    cx = THUMB_W * 3 // 4
+    result = _glow_text(result, block, _font(52), cx, THUMB_H // 2 - 20)
+    ImageDraw.Draw(result).text(
+        (cx, THUMB_H - 50), "Watch Now",
+        font=_font(28), fill=(0, 212, 255), anchor="mm"
+    )
+    return result
+
+
+def _layout_c(img, title: str):
+    """Layout C: emoji row + title with dark gradient."""
+    dark = Image.new("RGB", img.size, (5, 5, 20))
+    img = Image.blend(img, dark, alpha=0.60)
+    d = ImageDraw.Draw(img)
+    emojis = random.sample(["*", "!", "?", "+", "#"], 3)
+    d.text((THUMB_W // 2, 90), "  ".join(emojis), font=_font(60), fill=(255, 220, 50), anchor="mm")
+    block = "\n".join(_wrap(title, 20))
+    img = _glow_text(img, block, _font(56), THUMB_W // 2, THUMB_H // 2 + 20)
+    ImageDraw.Draw(img).text(
+        (THUMB_W // 2, THUMB_H - 50), "RAGAI Hindi Stories",
+        font=_font(28), fill=(160, 200, 255), anchor="mm"
+    )
+    return img
+
+
+class ThumbnailGenerator:
+    """Generates viral-style YouTube thumbnails with 3 rotating layout templates."""
 
     def __init__(self):
         self._ffmpeg = _ffmpeg_path()
@@ -48,135 +151,46 @@ class ThumbnailGenerator:
         title: str,
         output_path: Path,
         frame_time: float = 3.0,
+        layout: Optional[str] = None,
     ) -> Optional[Path]:
-        """
-        Extract frame → darken → overlay title text → save JPEG.
-        Returns output_path on success, None on failure.
-        """
-        if not _PIL_AVAILABLE:
-            logger.warning("Pillow unavailable — skipping thumbnail")
+        if not _PIL:
+            logger.warning("Pillow unavailable - skipping thumbnail")
             return None
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        chosen = layout or _pick_layout()
+        logger.info("Thumbnail layout %s for: %s", chosen, title)
 
         with tempfile.TemporaryDirectory(prefix="ragai_thumb_") as tmp:
-            frame_path = Path(tmp) / "frame.png"
-            if not self._extract_frame(video_path, frame_path, frame_time):
-                logger.warning("Frame extraction failed for %s", video_path.name)
+            frame = Path(tmp) / "frame.png"
+            if not self._extract_frame(video_path, frame, frame_time):
+                logger.warning("Frame extraction failed: %s", video_path.name)
                 return None
-            result = self._compose(frame_path, title, output_path)
-
-        return result
-
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
+            return self._compose(frame, title, output_path, chosen)
 
     def _extract_frame(self, video: Path, out: Path, t: float) -> bool:
-        """Extract a single frame at time t using FFmpeg."""
         cmd = [
-            self._ffmpeg, "-y",
-            "-ss", str(t),
-            "-i", str(video),
+            self._ffmpeg, "-y", "-ss", str(t), "-i", str(video),
             "-vframes", "1",
-            "-vf", f"scale={self.THUMB_W}:{self.THUMB_H}:force_original_aspect_ratio=increase,"
-                   f"crop={self.THUMB_W}:{self.THUMB_H}",
+            "-vf", f"scale={THUMB_W}:{THUMB_H}:force_original_aspect_ratio=increase,"
+                   f"crop={THUMB_W}:{THUMB_H}",
             str(out),
         ]
-        result = subprocess.run(cmd, capture_output=True, timeout=20)
-        return result.returncode == 0 and out.exists()
+        r = subprocess.run(cmd, capture_output=True, timeout=20)
+        return r.returncode == 0 and out.exists()
 
-    def _compose(self, frame_path: Path, title: str, output_path: Path) -> Optional[Path]:
-        """Compose thumbnail: darken frame + text overlay with glow."""
+    def _compose(self, frame: Path, title: str, out: Path, layout: str) -> Optional[Path]:
         try:
-            img = Image.open(frame_path).convert("RGB")
-            img = img.resize((self.THUMB_W, self.THUMB_H), Image.LANCZOS)
-
-            # Darken background (multiply by 0.45)
-            dark = Image.new("RGB", img.size, (0, 0, 0))
-            img = Image.blend(img, dark, alpha=0.55)
-
-            draw = ImageDraw.Draw(img)
-
-            # Try to load a font; fall back to default
-            font_large = self._load_font(60)
-            font_small = self._load_font(32)
-
-            # Wrap title text
-            lines = self._wrap_text(title, max_chars=20)
-            text_block = "\n".join(lines)
-
-            # Glow effect: draw blurred shadow layer
-            glow_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            glow_draw = ImageDraw.Draw(glow_layer)
-            cx = self.THUMB_W // 2
-            cy = self.THUMB_H // 2 - 40
-
-            # Draw glow (orange/gold shadow)
-            for offset in range(6, 0, -2):
-                glow_draw.text(
-                    (cx, cy), text_block,
-                    font=font_large, fill=(255, 180, 0, 80),
-                    anchor="mm", align="center",
-                )
-            glow_blurred = glow_layer.filter(ImageFilter.GaussianBlur(radius=8))
-            img = img.convert("RGBA")
-            img = Image.alpha_composite(img, glow_blurred)
-            img = img.convert("RGB")
-
-            draw = ImageDraw.Draw(img)
-
-            # Main title text — white with dark shadow
-            for dx, dy in [(-2, -2), (2, 2), (-2, 2), (2, -2)]:
-                draw.text(
-                    (cx + dx, cy + dy), text_block,
-                    font=font_large, fill=(0, 0, 0),
-                    anchor="mm", align="center",
-                )
-            draw.text(
-                (cx, cy), text_block,
-                font=font_large, fill=(255, 255, 255),
-                anchor="mm", align="center",
-            )
-
-            # Sub-label: "RAGAI Compilation"
-            sub_y = self.THUMB_H - 60
-            draw.text(
-                (cx, sub_y), "▶  RAGAI Compilation",
-                font=font_small, fill=(255, 215, 0),
-                anchor="mm",
-            )
-
-            img.save(str(output_path), "JPEG", quality=92)
-            logger.info("Thumbnail saved: %s", output_path)
-            return output_path
-
+            img = Image.open(frame).convert("RGB").resize((THUMB_W, THUMB_H), Image.LANCZOS)
+            if layout == "B":
+                img = _layout_b(img, title)
+            elif layout == "C":
+                img = _layout_c(img, title)
+            else:
+                img = _layout_a(img, title)
+            img.save(str(out), "JPEG", quality=92)
+            logger.info("Thumbnail saved (%s): %s", layout, out)
+            return out
         except Exception as exc:
             logger.error("Thumbnail compose failed: %s", exc)
             return None
-
-    def _load_font(self, size: int) -> "ImageFont.FreeTypeFont":
-        """Try common Windows fonts, fall back to default."""
-        candidates = [
-            "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/calibri.ttf",
-            "C:/Windows/Fonts/segoeui.ttf",
-        ]
-        for path in candidates:
-            try:
-                return ImageFont.truetype(path, size)
-            except Exception:
-                continue
-        return ImageFont.load_default()
-
-    def _wrap_text(self, text: str, max_chars: int = 20) -> list:
-        words = text.split()
-        lines, line = [], []
-        for w in words:
-            line.append(w)
-            if len(" ".join(line)) >= max_chars:
-                lines.append(" ".join(line))
-                line = []
-        if line:
-            lines.append(" ".join(line))
-        return lines[:3]  # max 3 lines

@@ -7,5 +7,9 @@
   "hook_enabled": true,
   "outro_enabled": true,
   "auto_thumbnail": true,
-  "auto_titles": true
+  "auto_titles": true,
+  "target_video_minutes": 12,
+  "min_clips": 3,
+  "max_clips": 10,
+  "similarity_threshold": 0.6
 }
