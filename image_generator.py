@@ -129,6 +129,20 @@ class ImageGenerator:
         self._provider_log: List[str] = []   # human-readable switch log
         self._ov_pipe = None                 # lazy-loaded OpenVINO pipeline
 
+        # Cinematic prompt builder (optional — graceful fallback if disabled)
+        self._prompt_builder = None
+        try:
+            import json
+            from pathlib import Path as _Path
+            _cfg_path = _Path("ragai_advanced_config.json")
+            _flags = json.loads(_cfg_path.read_text(encoding="utf-8")) if _cfg_path.exists() else {}
+            if _flags.get("enable_cinematic_prompt_engine", True):
+                from prompt_template_builder import PromptTemplateBuilder
+                self._prompt_builder = PromptTemplateBuilder()
+                logger.info("ImageGenerator: cinematic prompt engine enabled")
+        except Exception as exc:
+            logger.warning("ImageGenerator: cinematic prompt engine unavailable — %s", exc)
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -411,6 +425,12 @@ class ImageGenerator:
 
     def _build_prompt(self, scene: Scene, style: VisualStyle) -> str:
         modifier = STYLE_PROMPT_MODIFIERS.get(style, "")
+        # Use cinematic prompt builder if available and enabled
+        try:
+            if self._prompt_builder is not None:
+                return self._prompt_builder.build(scene, modifier)
+        except Exception as exc:
+            logger.warning("PromptTemplateBuilder failed — falling back to base prompt: %s", exc)
         return f"{scene.image_prompt} {modifier}".strip()
 
     def _download(self, url: str, dest: Path) -> Path:

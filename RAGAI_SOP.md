@@ -1,8 +1,8 @@
 # RAGAI Video Factory — Standard Operating Procedure (SOP)
 
-> Version: 6.0 | Platform: Windows 10/11 | Last Updated: March 2026 | Author: Kunal
+> Version: 7.4 | Platform: Windows 10/11 | Last Updated: March 2026 | Author: Kunal
 >
-> Book & Story → Cinematic Hindi Video → YouTube
+> Book & Story → Cinematic Hindi/English Video → YouTube
 
 ---
 
@@ -34,6 +34,23 @@
 24. [Before Next Laptop Rebuild — Backup Checklist](#24-before-next-laptop-rebuild--backup-checklist)
 25. [Pending Items & Future Upgrades](#25-pending-items--future-upgrades)
 26. [Quick Reference Commands](#26-quick-reference-commands)
+27. [RAGAI Editor V2](#27-ragai-editor-v2)
+28. [RAGAI Editor V2 — Module Reference](#28-ragai-editor-v2--module-reference)
+29. [Global Config — ragai_config.json](#29-global-config--ragai_configjson)
+30. [Job Manager & Crash Recovery System](#30-job-manager--crash-recovery-system)
+31. [Scheduler — Automated Topic Queue](#31-scheduler--automated-topic-queue)
+32. [Complete Project Structure Reference (v6.0 + Editor V2)](#32-complete-project-structure-reference-v60--editor-v2)
+33. [Rebuild on New System — Complete Checklist](#33-rebuild-on-new-system--complete-checklist)
+34. [How to Ask Kiro to Rebuild RAGAI on a New System](#34-how-to-ask-kiro-to-rebuild-ragai-on-a-new-system)
+35. [Content Intelligence Layer (v7.0)](#35-content-intelligence-layer-v70)
+36. [Thumbnail A/B Testing](#36-thumbnail-ab-testing)
+37. [Performance Layer](#37-performance-layer)
+38. [Intelligence Layer (v7.1)](#38-intelligence-layer-v71)
+39. [Flexible Input Modes (v7.2)](#39-flexible-input-modes-v72)
+40. [Cinematic Prompt Engine (v7.3)](#40-cinematic-prompt-engine-v73)
+41. [Character Reference System (v7.4)](#41-character-reference-system-v74)
+42. [Advanced Configuration Reference](#42-advanced-configuration-reference--ragai_advanced_configjson)
+43. [Complete Project Structure Reference (v7.4)](#43-complete-project-structure-reference-v74)
 
 ---
 
@@ -1391,4 +1408,477 @@ Please:
 ---
 
 *RAGAI Video Factory v6.0 + Editor V2 — AI-powered cinematic video generation and compilation.*
+*Built by Kunal with Kiro | March 2026*
+
+---
+
+## 35. Content Intelligence Layer (v7.0)
+
+Added in March 2026. All modules are optional and controlled via `ragai_advanced_config.json`.
+
+### 35.1 Topic Quality Engine — `topic_quality_engine.py`
+
+Scores every topic before spending any API credits. Topics scoring below threshold are filtered out automatically.
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| Emotion | 30% | Emotional resonance keywords |
+| Curiosity | 20% | Mystery/surprise triggers |
+| Relatability | 30% | Family/village/struggle themes |
+| Popularity | 20% | Trending keyword match |
+
+Composite score range: 0–10. Topics below 2.0 are skipped.
+
+### 35.2 Engagement Predictor — `engagement_predictor.py`
+
+Predicts CTR and watch time before generation. Blocks low-engagement topics.
+
+Output example:
+```json
+{ "predicted_ctr": 7.87, "predicted_watch_minutes": 5.31, "should_generate": true }
+```
+
+### 35.3 Narrative Variation Engine — `narrative_variation_engine.py`
+
+Rotates through 5 narrative structures so every video tells a story differently:
+
+| Code | Structure |
+|------|-----------|
+| A | Hero's Journey |
+| B | Mystery Reveal |
+| C | Conflict Resolution |
+| D | Character Twist |
+| E | Investigation |
+
+### 35.4 Visual Variation Engine — `visual_variation_engine.py`
+
+Per-scene Ken Burns motion configs with hybrid patterns every 3–4 scenes. Prevents repetitive visual pacing.
+
+### 35.5 Content Variation Engine — `content_variation_engine.py`
+
+Rotates voice styles (SSML prosody), music moods, and scene pacing profiles automatically per topic.
+
+Pacing profiles: Balanced, Slow Burn, Dynamic, Fast Paced.
+
+### 35.6 Story Archive — `story_archive.py`
+
+SQLite database (`story_archive.db`) tracking all generated stories. Uses Jaccard similarity to detect duplicate topics and suggest variants.
+
+Functions: `save_story()`, `check_duplicate_topic()`, `retrieve_similar_topics()`, `suggest_variant()`, `stats()`
+
+---
+
+## 36. Thumbnail A/B Testing — `thumbnail_ab_tester.py`
+
+Generates 3 thumbnail layout variants (A, B, C) per video. Tracks CTR via Wilson lower-bound scoring. Auto-selects winner after 50+ impressions.
+
+Variants are saved alongside the video:
+```
+output/video_YYYYMMDD_HHMMSS/
+├── video.mp4
+├── thumbnail_A.jpg
+├── thumbnail_B.jpg
+├── thumbnail_C.jpg
+└── metadata.txt
+```
+
+Update CTR data from `analytics_data.json`:
+```python
+from thumbnail_ab_tester import ThumbnailABTester
+tester = ThumbnailABTester()
+tester.bulk_update_from_analytics("analytics_data.json")
+winner = tester.select_winner("video_id")
+```
+
+---
+
+## 37. Performance Layer
+
+### 37.1 Parallel Scene Executor — `scene_parallel_executor.py`
+
+Processes image generation, voice synthesis, and clip encoding concurrently using `ThreadPoolExecutor` with 4 workers. Reduces generation time by ~50–70%.
+
+### 37.2 Video Assembler Fixes — `video_assembler.py`
+
+- Pipe-based Ken Burns (no PNG frame dump) — ~60–70% faster scene encoding
+- Intel QSV hardware encoding with automatic fallback to libx264
+- `OSError`/`BrokenPipeError` catch for Windows QSV pipe failures — auto-retries with libx264
+- `tempfile.TemporaryFile()` for stderr (eliminates pipe deadlock on long encodes)
+
+---
+
+## 38. Intelligence Layer (v7.1)
+
+### 38.1 Language Engine — `language_engine.py`
+
+Detects language from Unicode script ranges + English keyword heuristics. Supports 11 languages.
+
+**English is now fully supported** — `Language.EN` added to models.py. Voice: `en-US-JennyNeural`.
+
+| Language | Code | Edge-TTS Voice |
+|----------|------|----------------|
+| English | en | en-US-JennyNeural |
+| Hindi | hi | hi-IN-SwaraNeural |
+| Tamil | ta | ta-IN-PallaviNeural |
+| Telugu | te | te-IN-ShrutiNeural |
+| Bengali | bn | bn-IN-TanishaaNeural |
+| Gujarati | gu | gu-IN-DhwaniNeural |
+| Marathi | mr | mr-IN-AarohiNeural |
+| Kannada | kn | kn-IN-SapnaNeural |
+| Malayalam | ml | ml-IN-SobhanaNeural |
+| Punjabi | pa | pa-IN-VaaniNeural |
+| Urdu | ur | ur-PK-UzmaNeural |
+
+### 38.2 Story Knowledge Graph — `story_knowledge_graph.py`
+
+SQLite database (`story_graph.db`) storing topic, characters, locations, themes, and emotion arc per story. Semantic similarity search prevents story repetition across videos.
+
+Functions: `add_story()`, `search_similar_story()`, `suggest_story_variant()`
+
+### 38.3 Scene Composer — `scene_composer.py`
+
+PIL-based layer compositor combining:
+- Background image
+- Character overlays (RGBA)
+- Foreground layer
+- Lighting presets: golden_hour, blue_hour, dramatic, soft_natural, night
+- Motion effects: vignette, film_grain, soft_blur_edges
+
+Used optionally before video assembly.
+
+### 38.4 Style Engine — `style_engine.py`
+
+Channel branding via `channel_styles.json`. Per-channel music style, voice style, color grade, and thumbnail colors.
+
+```json
+{
+  "devotional_channel": {
+    "music_style": "devotional",
+    "color_palette": "warm",
+    "voice_style": "calm"
+  }
+}
+```
+
+### 38.5 Emotion Detector — `emotion_detector.py`
+
+Keyword-based emotion scoring across Hindi + English. Detects: joy, sadness, tension, hope, inspiration, calm, conflict, resolution. Outputs per-scene arc map for `story_flow_optimizer.py`.
+
+### 38.6 Render Optimizer — `render_optimizer.py`
+
+Probes FFmpeg for NVENC/QSV/VAAPI GPU encoders. Returns optimal encode args per hardware. Recommends parallel worker count based on CPU/GPU availability.
+
+Encoder priority: NVENC → QSV → VAAPI → libx264 (CPU)
+
+### 38.7 QA Engine — `qa_engine.py`
+
+ffprobe-based validation of scene clips and final output. Checks:
+- Scene duration (1–120 seconds)
+- Audio stream presence
+- File size (minimum 100KB)
+
+Returns `regenerate_scenes` list for failed clips.
+
+### 38.8 Prompt Optimizer — `prompt_optimizer.py`
+
+Reads `analytics_data.json`, applies rules to strengthen hook/pacing/emotion prompt templates when metrics drop. Persists improvements to `prompt_templates.json`.
+
+Rules:
+- `retention_30s_pct < 60%` → strengthen hook instruction
+- `watch_time_minutes < 2.0` → tighten pacing instruction
+- `ctr_pct < 5.0%` → intensify emotion instruction
+
+---
+
+## 39. Flexible Input Modes (v7.2)
+
+### 39.1 Manual Topic Loader — `manual_topic_loader.py`
+
+Load topics from `topics_manual.txt` (one per line) or `topics_queue.json` with priority over auto-discovered topics.
+
+**Priority order:** topics_manual.txt → topics_queue.json → automated discovery
+
+```
+topics_manual.txt example:
+A poor farmer who saves his village
+A mysterious temple miracle
+A young girl who becomes a doctor
+```
+
+Consumed topics are removed from the file automatically. GUI integration: `add_manual_topic(topic)`.
+
+### 39.2 Script Loader — `script_loader.py`
+
+Load `.txt` scripts from `scripts/` directory. Bypasses `story_generator.py` entirely.
+
+Supported formats:
+- Explicit markers: `[SCENE 1]`, `[SCENE 2]`, etc.
+- Paragraph-based: blank lines separate scenes
+
+Processed scripts are renamed to `.done`.
+
+### 39.3 Microphone Narration Recorder — `mic_narration_recorder.py`
+
+Records microphone input via `sounddevice`, saves normalized WAV to `narrations/`. When a narration file exists, `voice_synthesizer.py` is bypassed.
+
+```cmd
+pip install sounddevice scipy
+```
+
+Usage:
+```python
+from mic_narration_recorder import MicNarrationRecorder
+recorder = MicNarrationRecorder()
+path = recorder.record("story_001", duration_seconds=120)
+```
+
+### 39.4 Audio Sync Engine — `audio_sync_engine.py`
+
+Maps a single narration WAV to multiple scenes using word-count-weighted or equal time distribution. Splits audio via FFmpeg and assigns `scene.audio_path` per scene.
+
+---
+
+## 40. Cinematic Prompt Engine (v7.3)
+
+Transforms plain scene descriptions into rich cinematic prompts. Zero additional API calls — only the prompt text changes.
+
+### 40.1 Cinematic Prompt Engine — `cinematic_prompt_engine.py`
+
+Wraps every prompt with rotating shot type and lighting style.
+
+**Shot types:** cinematic wide shot, dramatic close-up, low-angle cinematic shot, over-the-shoulder shot, cinematic aerial view, tracking shot perspective
+
+**Lighting styles:** golden hour lighting, soft morning light, dramatic sunset lighting, warm cinematic lighting, diffused cloudy daylight, moody night lighting
+
+**Quality suffix appended:** `cinematic storytelling, ultra realistic, film still, shallow depth of field, 4k`
+
+### 40.2 Character Anchor Engine — `character_anchor_engine.py`
+
+10 default character profiles (farmer, girl, teacher, mother, officer, doctor, soldier, child, elder, woman). Detects character keywords in Hindi and English, injects the full physical description so the same character looks identical across all scenes.
+
+### 40.3 Location Anchor Engine — `location_anchor_engine.py`
+
+12 default location profiles (village, temple, farm, school, city, forest, river, home, office, hospital, mountain, market). Appends consistent environment context to every matching scene.
+
+### 40.4 Prompt Template Builder — `prompt_template_builder.py`
+
+Single assembly point. Pipeline:
+```
+character inject → location inject → cinematic wrap → style modifier
+```
+
+Used by `image_generator._build_prompt()`.
+
+### Config Flags
+
+```json
+{
+  "enable_cinematic_prompt_engine": true,
+  "enable_character_anchor": true,
+  "enable_location_anchor": true
+}
+```
+
+---
+
+## 41. Character Reference System (v7.4)
+
+Generates one portrait image per character and reuses it across all scenes for visual consistency. Scene image count is unchanged — portraits are pre-generated before the main scene loop.
+
+### 41.1 Character Profile Generator — `character_profile_generator.py`
+
+Scans story scenes to detect main characters. Builds structured profiles stored in `characters.json`.
+
+```json
+[
+  {
+    "id": "farmer_story001",
+    "role": "farmer",
+    "description": "young Indian farmer, mid-30s, brown skin, short black hair, thin mustache, wearing white kurta and dhoti",
+    "reference_image": "characters/farmer_story001_reference.png"
+  }
+]
+```
+
+### 41.2 Character Reference Manager — `character_reference_manager.py`
+
+Generates portrait images for each character using the existing image generation API (full provider chain). Saves to `characters/<char_id>_reference.png`. Skips generation if file already exists.
+
+Portrait prompt template:
+```
+portrait photo of {description}, studio lighting, ultra realistic, neutral background, sharp focus, professional headshot, 4k
+```
+
+### 41.3 Reference Prompt Engine — `reference_prompt_engine.py`
+
+When a reference image exists, injects `"the same farmer as shown in the reference image"` into scene prompts. Falls back to text description anchor if no reference exists.
+
+### Pipeline Flow
+
+```
+story_generator
+      ↓
+character_profile_generator   ← detects characters from scenes
+      ↓
+character_reference_manager   ← generates portrait images (once per story)
+      ↓
+prompt_template_builder.activate_reference_engine()
+      ↓
+image_generator               ← scene images (count unchanged)
+```
+
+### Config Flags
+
+```json
+{
+  "enable_character_reference_system": true,
+  "enable_reference_conditioning": true
+}
+```
+
+---
+
+## 42. Advanced Configuration Reference — ragai_advanced_config.json
+
+All new modules are controlled by `ragai_advanced_config.json` in the project root. Set any flag to `false` to disable that feature — the system reverts to original behaviour.
+
+```json
+{
+  "enable_language_engine": true,
+  "enable_story_knowledge_graph": true,
+  "enable_scene_composer": true,
+  "enable_style_engine": true,
+  "enable_emotion_detection": true,
+  "enable_render_optimizer": true,
+  "enable_qa_engine": true,
+  "enable_prompt_optimizer": true,
+  "enable_manual_topic_mode": true,
+  "enable_manual_script_mode": true,
+  "enable_mic_narration_mode": true,
+  "enable_cinematic_prompt_engine": true,
+  "enable_character_anchor": true,
+  "enable_location_anchor": true,
+  "enable_character_reference_system": true,
+  "enable_reference_conditioning": true
+}
+```
+
+---
+
+## 43. Complete Project Structure Reference (v7.4)
+
+```
+ragai/
+│
+├── Core Pipeline
+│   ├── ragai.py                    Entry point — GUI/CLI dispatch
+│   ├── config.py                   .env loading and AppConfig dataclass
+│   ├── models.py                   All enums, dataclasses, constants, exceptions
+│   ├── pipeline.py                 5-stage pipeline orchestrator
+│   ├── story_generator.py          Stage 2 — Groq LLaMA story/scene generation
+│   ├── image_generator.py          Stage 3 — 4-provider image chain + cinematic prompts
+│   ├── voice_synthesizer.py        Stage 4 — Edge-TTS / gTTS (11 languages)
+│   ├── video_assembler.py          Stage 5 — FFmpeg Ken Burns + QSV encode
+│   ├── style_detector.py           Auto-detect visual style from topic keywords
+│   ├── audio_transcriber.py        Groq Whisper transcription + audio splitting
+│   ├── image_importer.py           User image loading, validation, resize
+│   ├── music_selector.py           BGM selection by style + keyword scoring
+│
+├── Content Intelligence
+│   ├── topic_quality_engine.py     Topic scoring (emotion/curiosity/relatability)
+│   ├── engagement_predictor.py     CTR + watch time prediction
+│   ├── narrative_variation_engine.py  5 narrative structures rotation
+│   ├── visual_variation_engine.py  Per-scene Ken Burns motion variation
+│   ├── content_variation_engine.py Voice/music/pacing profile rotation
+│   ├── story_archive.py            SQLite story memory + duplicate detection
+│   ├── thumbnail_ab_tester.py      3-variant A/B testing with Wilson CTR scoring
+│
+├── Intelligence Layer
+│   ├── language_engine.py          11-language detection + voice/style config
+│   ├── story_knowledge_graph.py    SQLite semantic story graph
+│   ├── scene_composer.py           PIL layer compositor (lighting + effects)
+│   ├── style_engine.py             Channel branding via channel_styles.json
+│   ├── emotion_detector.py         Per-scene emotion arc detection
+│   ├── render_optimizer.py         GPU encoder detection (NVENC/QSV/VAAPI)
+│   ├── qa_engine.py                ffprobe-based video/clip validation
+│   ├── prompt_optimizer.py         Analytics-driven prompt template evolution
+│
+├── Flexible Input Modes
+│   ├── manual_topic_loader.py      topics_manual.txt + queue priority injection
+│   ├── script_loader.py            User script files bypass story_generator
+│   ├── mic_narration_recorder.py   Microphone recording → normalized WAV
+│   ├── audio_sync_engine.py        Narration-to-scene audio splitting
+│
+├── Cinematic Prompt Engine
+│   ├── cinematic_prompt_engine.py  Shot type + lighting style rotation
+│   ├── character_anchor_engine.py  Text-based character consistency
+│   ├── location_anchor_engine.py   Location environment consistency
+│   ├── prompt_template_builder.py  Single prompt assembly entry point
+│
+├── Character Reference System
+│   ├── character_profile_generator.py  Detect + profile story characters
+│   ├── character_reference_manager.py  Generate + cache portrait images
+│   ├── reference_prompt_engine.py      Reference-based prompt injection
+│
+├── Performance
+│   ├── scene_parallel_executor.py  ThreadPoolExecutor (4 workers) for scenes
+│
+├── Editor V2
+│   ├── editor.py                   RAGAI Editor V2 entry point
+│   ├── editor_gui.py               3-panel Tkinter GUI
+│   ├── editor_config.py            ragai_config.json loader
+│   ├── clip_manager.py             Clip library manager
+│   ├── watcher.py                  watchdog folder monitor
+│   ├── timeline.py                 Drag-and-drop timeline
+│   ├── assembler.py                FFmpeg compilation assembler
+│   ├── auto_pipeline.py            Automated batch compilation
+│   ├── topic_engine.py             Hashtag-based clip grouping
+│   ├── hook_generator.py           AI hook intro generator
+│   ├── outro_generator.py          Subscribe outro generator
+│   ├── variation_engine.py         Content variation engine
+│   ├── thumbnail_generator.py      Viral thumbnail composer
+│
+├── Automation
+│   ├── job_manager.py              Job state + crash recovery
+│   ├── scheduler.py                Automated topic queue runner
+│
+├── Analytics
+│   ├── analytics_engine.py         Video performance analytics
+│   ├── retention_optimizer.py      Watch time optimization
+│   ├── channel_manager.py          Multi-channel management
+│   ├── shorts_generator.py         YouTube Shorts generation
+│   ├── title_generator.py          SEO title generation
+│   ├── viral_scorer.py             Viral potential scoring
+│   ├── trend_fetcher.py            Trending topic fetcher
+│
+├── Config Files
+│   ├── ragai_advanced_config.json  Feature flags for all new modules
+│   ├── ragai_config.json           Global config (output_dir, quality, QSV)
+│   ├── channel_styles.json         Per-channel branding config
+│   ├── characters.json             Character profiles (generated per story)
+│   ├── topics_queue.json           Scheduler topic queue
+│   ├── topics_manual.txt           Manual topic input file
+│
+├── Data Files (runtime, not committed)
+│   ├── jobs_state.json             Job lifecycle state
+│   ├── editor_clips.json           Clip library state
+│   ├── story_archive.db            Story memory database
+│   ├── story_graph.db              Story knowledge graph
+│   ├── prompt_templates.json       Evolved prompt templates
+│   ├── analytics_data.json         Video performance data
+│
+├── Folders
+│   ├── output/                     Generated videos (folder-per-video)
+│   ├── compiled/                   Editor compilation outputs
+│   ├── characters/                 Character reference portrait images
+│   ├── narrations/                 Microphone narration WAV files
+│   ├── scripts/                    User-provided script .txt files
+│   ├── music/                      7 background music tracks
+│   ├── logs/                       Application logs
+│   └── tmp/                        Temporary working files (auto-cleaned)
+```
+
+---
+
+*RAGAI Video Factory v7.4 — AI-powered cinematic video generation with character consistency, multi-language support, and adaptive intelligence.*
 *Built by Kunal with Kiro | March 2026*

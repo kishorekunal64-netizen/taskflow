@@ -9,5 +9,10 @@
   "enable_prompt_optimizer": true,
   "enable_manual_topic_mode": true,
   "enable_manual_script_mode": true,
-  "enable_mic_narration_mode": true
+  "enable_mic_narration_mode": true,
+  "enable_cinematic_prompt_engine": true,
+  "enable_character_anchor": true,
+  "enable_location_anchor": true,
+  "enable_character_reference_system": true,
+  "enable_reference_conditioning": true
 }
