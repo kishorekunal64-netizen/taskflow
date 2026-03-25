@@ -19,6 +19,7 @@ tmp/
 output/
 logs/
 compiled/
+test/
 
 # Runtime state files (regenerated automatically)
 jobs_state.json
