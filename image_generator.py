@@ -51,7 +51,7 @@ _POLLINATIONS_URL = "https://image.pollinations.ai/prompt/{prompt}"
 _POLLINATIONS_TIMEOUT = 90   # can be slow under load
 
 # HuggingFace Inference API — FLUX.1-schnell (Apache 2.0, free tier)
-_HF_API_URL      = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
+_HF_API_URL      = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
 _HF_TIMEOUT      = 120
 
 # OpenVINO local — FLUX/SD on Intel Arc GPU (offline, no API key needed)

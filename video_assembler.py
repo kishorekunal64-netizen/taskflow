@@ -243,9 +243,11 @@ class VideoAssembler:
                str(clip_path)]
         )
 
+        import tempfile
+        stderr_file = tempfile.TemporaryFile()
         proc = subprocess.Popen(
             cmd, stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL, stderr=stderr_file,
         )
 
         try:
@@ -278,16 +280,35 @@ class VideoAssembler:
                     frame[:bar_h, :] = 0
                     frame[H_out - bar_h:, :] = 0
 
+                # Check if FFmpeg exited early (e.g. QSV init failure) before writing
+                if proc.poll() is not None:
+                    break
+
                 proc.stdin.write(frame.tobytes())
 
-            proc.stdin.close()
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
+            proc.wait()
+        except (BrokenPipeError, OSError) as pipe_exc:
+            # Windows raises OSError [Errno 22] when writing to a closed pipe (QSV init failure).
+            # Fall through to returncode check which will trigger libx264 retry.
+            logger.debug("Pipe write error (likely QSV init failure): %s", pipe_exc)
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
             proc.wait()
         except Exception as exc:
             proc.kill()
+            stderr_file.close()
             raise VideoAssemblyError(f"Scene {scene.number} pipe encode failed: {exc}") from exc
 
         if proc.returncode != 0:
-            stderr = proc.stderr.read().decode("utf-8", errors="replace")
+            stderr_file.seek(0)
+            stderr = stderr_file.read().decode("utf-8", errors="replace")
+            stderr_file.close()
             if use_qsv:
                 logger.warning("QSV pipe encode failed for scene %d — retrying with libx264", int(scene.number))
                 global _qsv_available
@@ -297,6 +318,7 @@ class VideoAssembler:
                 f"FFmpeg scene {scene.number} exited {proc.returncode}:\n{stderr}"
             )
 
+        stderr_file.close()
         logger.debug("Scene clip (%s, pipe): %s", "QSV" if use_qsv else "SW", clip_path)
         return clip_path
 

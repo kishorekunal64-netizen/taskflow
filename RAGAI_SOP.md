@@ -910,3 +910,485 @@ powershell "Get-ChildItem logs\ | Sort-Object LastWriteTime -Descending | Select
 
 *RAGAI Video Factory v6.0 — AI-powered cinematic video generation for Indian language content.*
 *Built by Kunal with Kiro | March 2026*
+
+
+---
+
+## 27. RAGAI Editor V2
+
+RAGAI Editor V2 is a standalone Tkinter desktop application that automatically collects videos produced by RAGAI and compiles them into long-form YouTube compilation videos.
+
+### Purpose
+
+- Watch `./output/` for new RAGAI-generated videos
+- Group clips by topic/hashtag
+- Auto-generate hook intro + outro clips
+- Compile into a single long-form video (12–20 min)
+- Generate viral thumbnails
+- Save final compilation to `./compiled/`
+
+### Entry Point
+
+```cmd
+venv\Scripts\activate
+python editor.py
+```
+
+Or double-click `START_EDITOR.bat`.
+
+### GUI Layout
+
+| Panel | Location | Contents |
+|-------|----------|----------|
+| Clip Library | Left | Thumbnail grid, search/filter, clip metadata |
+| Timeline Editor | Center | Visual drag-and-drop canvas, trim controls, transitions |
+| Export Settings | Right | Format, quality, output folder, EXPORT VIDEO button, AUTO MODE toggle |
+
+### Auto Mode
+
+Toggle **AUTO MODE** in the right panel. When enabled:
+
+1. Watcher detects new video folders in `./output/`
+2. Clips are imported and metadata extracted
+3. When 3+ clips share related hashtags, a compilation group is formed
+4. Hook intro is generated via Groq LLM + Edge-TTS
+5. Compilation is assembled via FFmpeg (hook + clips + outro)
+6. Thumbnail is generated
+7. Final video saved to `./compiled/`
+8. Clips marked as `Exported`
+
+### Manual Mode
+
+1. Open editor — clip library auto-populates from `./output/`
+2. Drag clips onto the timeline
+3. Adjust trim points and transitions
+4. Click **EXPORT VIDEO**
+
+---
+
+## 28. RAGAI Editor V2 — Module Reference
+
+| Module | File | Responsibility |
+|--------|------|---------------|
+| Entry point | `editor.py` | Init clip manager, start watcher, launch GUI, init auto pipeline |
+| GUI | `editor_gui.py` | 3-panel Tkinter interface (ClipLibraryPanel, TimelinePanel, ExportPanel) |
+| Config | `editor_config.py` | Load/save `ragai_config.json` |
+| Clip Manager | `clip_manager.py` | Maintain clip library in `editor_clips.json` |
+| Watcher | `watcher.py` | watchdog monitor on `./output/`, skips locked folders |
+| Topic Engine | `topic_engine.py` | Group clips by hashtag similarity |
+| Hook Generator | `hook_generator.py` | Groq LLM hook text → Edge-TTS voice → FFmpeg intro clip |
+| Outro Generator | `outro_generator.py` | Subscribe outro clip via FFmpeg |
+| Variation Engine | `variation_engine.py` | Rotate voices, randomize music/order/transitions |
+| Thumbnail Generator | `thumbnail_generator.py` | Extract frame, darken, overlay Hindi text, glow effect |
+| Timeline | `timeline.py` | Tkinter Canvas drag-and-drop timeline |
+| Assembler | `assembler.py` | FFmpeg compile: hook + clips + outro → final MP4 |
+| Auto Pipeline | `auto_pipeline.py` | Fully automated batch compilation workflow |
+
+### Clip States
+
+| State | Meaning |
+|-------|---------|
+| `Available` | In library, not yet on timeline |
+| `InTimeline` | Added to current timeline |
+| `Exported` | Already compiled into a video |
+
+### Clip Library Persistence
+
+Clip metadata is stored in `editor_clips.json` (runtime file, not committed to Git).
+
+Each entry contains: `filename`, `path`, `duration`, `resolution`, `topic`, `hashtags`, `thumbnail`, `created_at`, `state`.
+
+### Output Folder Structure (v6.0+)
+
+Each RAGAI generation saves into its own folder:
+
+```
+output/
+├── video_20260324_001/
+│   ├── video.mp4
+│   ├── thumbnail.jpg
+│   └── metadata.txt
+├── video_20260324_002/
+│   ├── video.mp4
+│   ├── thumbnail.jpg
+│   └── metadata.txt
+```
+
+The watcher reads `metadata.txt` for title, description, and hashtags.
+
+### Compiled Output
+
+```
+compiled/
+├── RAGAI_Compilation_VillageStory_20260324.mp4
+├── RAGAI_Compilation_VillageStory_20260324_thumb.jpg
+└── .thumbs/   ← cached thumbnail previews
+```
+
+---
+
+## 29. Global Config — ragai_config.json
+
+Both RAGAI and RAGAI Editor read from `ragai_config.json` in the project root.
+
+```json
+{
+  "output_dir":       "./output",
+  "compiled_dir":     "./compiled",
+  "default_quality":  "cinema",
+  "default_language": "hi",
+  "enable_qsv":       true,
+  "hook_enabled":     true,
+  "outro_enabled":    true,
+  "auto_thumbnail":   true,
+  "auto_titles":      true
+}
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `output_dir` | `./output` | Where RAGAI saves generated videos |
+| `compiled_dir` | `./compiled` | Where Editor saves compilations |
+| `default_quality` | `cinema` | Quality preset for compilations |
+| `default_language` | `hi` | Default narration language |
+| `enable_qsv` | `true` | Use Intel QSV hardware encoding |
+| `hook_enabled` | `true` | Generate hook intro for compilations |
+| `outro_enabled` | `true` | Append subscribe outro |
+| `auto_thumbnail` | `true` | Auto-generate viral thumbnail |
+| `auto_titles` | `true` | Auto-generate title from hashtags |
+
+Loaded via `editor_config.py` → `load_editor_config()`. Falls back to safe defaults if file is missing.
+
+---
+
+## 30. Job Manager & Crash Recovery System
+
+`job_manager.py` ensures the pipeline runs reliably for long periods without manual supervision.
+
+### Purpose
+
+- Track every generation job with full lifecycle state
+- Detect and recover from crashes or interrupted generations
+- File-lock mechanism prevents watcher from importing incomplete videos
+- Health monitor alerts if any component stops
+
+### Job State File
+
+All job state is persisted in `jobs_state.json` (runtime file, not committed to Git).
+
+```json
+{
+  "abc123": {
+    "job_id":        "abc123...",
+    "topic":         "Village girl becomes IAS officer",
+    "status":        "completed",
+    "started_at":    "2026-03-24T10:00:00+00:00",
+    "completed_at":  "2026-03-24T10:08:30+00:00",
+    "output_folder": "video_20260324_001",
+    "error":         null,
+    "retries":       0
+  }
+}
+```
+
+### Job Statuses
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Queued, not yet started |
+| `processing` | Generation actively running |
+| `completed` | Video verified and saved |
+| `failed` | Generation failed or output invalid |
+
+### Job Lifecycle
+
+```
+create_job(topic)          → status: pending
+mark_processing(job_id)    → status: processing  +  write generation.lock
+  ... RAGAI runs ...
+mark_completed(job_id)     → verify video.mp4 exists + size stable
+                           → status: completed   +  remove generation.lock
+                           → OR status: failed if verification fails
+```
+
+### File Lock Mechanism
+
+During generation, a `generation.lock` file is written inside the output folder:
+
+```
+output/video_20260324_001/
+├── generation.lock   ← watcher ignores this folder while lock exists
+├── video.mp4
+├── thumbnail.jpg
+└── metadata.txt
+```
+
+The watcher (`watcher.py`) skips any folder containing `generation.lock`. The lock is removed after generation completes successfully.
+
+### Crash Recovery
+
+On scheduler startup, `job_manager.startup_recovery()` runs automatically:
+
+1. Scans `jobs_state.json` for any job with `status: processing`
+2. For each interrupted job:
+   - If `video.mp4` exists and is valid → marks `completed`, removes stale lock
+   - If output is missing/incomplete → marks `failed`, prepends topic back to `topics_queue.json`
+3. Max retries: **2** — after that, job is abandoned with error logged
+
+### Health Monitor
+
+Runs every 60 seconds in a background thread. Checks:
+
+- Scheduler heartbeat (warns if scheduler stopped)
+- Watcher heartbeat (warns if folder watcher stopped)
+- Topic queue size (warns if queue is empty)
+- Stuck jobs (warns if any job has been `processing` for > 30 minutes)
+
+All warnings logged to `logs/job_manager.log`.
+
+### Log File
+
+```
+logs/job_manager.log
+```
+
+Format: `YYYY-MM-DDTHH:MM:SS  LEVEL     message`
+
+---
+
+## 31. Scheduler — Automated Topic Queue
+
+`scheduler.py` reads topics from `topics_queue.json` and runs RAGAI generation for each topic automatically.
+
+### Topics Queue File
+
+```json
+[
+  "Village girl becomes IAS officer",
+  "A soldier saves his village",
+  "Radha doing pooja in Shiva temple",
+  "..."
+]
+```
+
+Topics are consumed from the top. Recovered/failed topics are prepended back to the front.
+
+### Running the Scheduler
+
+```cmd
+venv\Scripts\activate
+
+# Run continuously (default 5-min interval between jobs)
+python scheduler.py
+
+# Run once (process one topic and exit)
+python scheduler.py --once
+
+# Custom interval
+python scheduler.py --interval 300
+
+# Crash recovery only (no new jobs)
+python scheduler.py --recover-only
+```
+
+Or double-click `START_SCHEDULER.bat`.
+
+### Scheduler Flags
+
+| Flag | Description |
+|------|-------------|
+| `--once` | Process one topic then exit |
+| `--interval N` | Seconds to wait between jobs (default: 300) |
+| `--recover-only` | Run crash recovery and exit, no new generation |
+
+### Full Automation Flow
+
+```
+START_SCHEDULER.bat
+      │
+      ▼
+scheduler.py starts
+      │
+      ├─► job_manager.startup_recovery()   ← fix any crashed jobs
+      │
+      └─► loop:
+            read topics_queue.json
+            pop next topic
+            job_manager.create_job(topic)
+            job_manager.mark_processing(job_id, folder)
+            job_manager.write_lock(folder)
+            run: python ragai.py --cli --topic "..." 
+            job_manager.mark_completed(job_id, folder)
+            job_manager.remove_lock(folder)
+            wait interval
+            repeat
+```
+
+Meanwhile, `watcher.py` monitors `./output/` and imports completed (unlocked) videos into the Editor clip library automatically.
+
+---
+
+## 32. Complete Project Structure Reference (v6.0 + Editor V2)
+
+```
+ragai/
+│
+├── ragai.py                Entry point — GUI/CLI dispatch
+├── config.py               .env loading and AppConfig dataclass
+├── models.py               All enums, dataclasses, constants, exceptions
+├── pipeline.py             5-stage pipeline orchestrator
+│
+├── story_generator.py      Stage 2 — Groq LLaMA story/scene generation
+├── image_generator.py      Stage 3 — 4-provider image chain
+├── voice_synthesizer.py    Stage 4 — Edge-TTS / gTTS voice synthesis
+├── video_assembler.py      Stage 5 — FFmpeg Ken Burns + QSV encode
+│
+├── style_detector.py       Auto-detect visual style from topic keywords
+├── audio_transcriber.py    Groq Whisper transcription + audio splitting
+├── image_importer.py       User image loading, validation, resize
+├── music_selector.py       BGM selection by style + keyword scoring
+├── log_setup.py            Logging configuration
+├── gui.py                  Tkinter GUI — animated header, 3 tabs, dark theme
+├── ragai_diagnose.py       Diagnostics runner
+├── create_music_v2.py      One-time music track generator
+│
+├── editor.py               RAGAI Editor V2 — entry point
+├── editor_gui.py           3-panel Tkinter GUI (Library/Timeline/Export)
+├── editor_config.py        ragai_config.json loader
+├── clip_manager.py         Clip library manager (editor_clips.json)
+├── watcher.py              watchdog folder monitor (skips locked folders)
+├── timeline.py             Tkinter Canvas drag-and-drop timeline
+├── assembler.py            FFmpeg compilation assembler
+├── auto_pipeline.py        Fully automated batch compilation
+├── topic_engine.py         Hashtag-based clip grouping
+├── hook_generator.py       AI hook intro video generator
+├── outro_generator.py      Subscribe outro clip generator
+├── variation_engine.py     Content variation (voices, music, order)
+├── thumbnail_generator.py  Viral thumbnail composer
+│
+├── job_manager.py          Job state tracker + crash recovery
+├── scheduler.py            Automated topic queue runner
+│
+├── viral_scorer.py         Viral potential scoring
+├── trend_fetcher.py        Trending topic fetcher
+│
+├── ragai_config.json       Global config (output_dir, quality, QSV, etc.)
+├── topics_queue.json       Topic queue for scheduler
+├── jobs_state.json         Runtime job state (not committed)
+├── editor_clips.json       Runtime clip library (not committed)
+│
+├── START_RAGAI.bat         Launch RAGAI GUI
+├── START_EDITOR.bat        Launch RAGAI Editor V2
+├── START_SCHEDULER.bat     Launch automated scheduler
+├── requirements.txt        Python dependencies
+├── .env                    API keys (not committed)
+│
+├── music/                  7 background music tracks
+├── output/                 Generated videos (folder-per-video structure)
+├── compiled/               Editor compilation outputs
+├── logs/                   Application logs
+└── venv/                   Virtual environment (not committed)
+```
+
+---
+
+## 33. Rebuild on New System — Complete Checklist
+
+Use this when setting up RAGAI on a new machine from scratch.
+
+### Step 1 — Install Tools
+
+- [ ] Python 3.11 or 3.12 — https://python.org/downloads — check "Add to PATH"
+- [ ] Git — https://git-scm.com/download/win
+- [ ] FFmpeg 8.x — https://www.gyan.dev/ffmpeg/builds/ → extract to `C:\ffmpeg\` → add `C:\ffmpeg\bin` to System PATH
+- [ ] VS Code + Python extension (`ms-python.python`)
+
+### Step 2 — Get the Project
+
+```cmd
+git clone https://github.com/kishorekunal64-netizen/taskflow.git ragai
+cd ragai
+```
+
+### Step 3 — Virtual Environment
+
+```cmd
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Step 4 — Configure .env
+
+Create `.env` in project root:
+
+```env
+GROQ_API_KEY=gsk_your_key_here
+LEONARDO_API_KEY=your_leonardo_uuid_here
+HF_TOKEN=hf_optional
+USE_EDGE_TTS=true
+DEFAULT_LANGUAGE=hi
+DEFAULT_FORMAT=landscape
+LOG_LEVEL=INFO
+```
+
+### Step 5 — Generate Music Tracks
+
+```cmd
+python create_music_v2.py
+```
+
+### Step 6 — Verify Everything
+
+```cmd
+python ragai.py --diagnose
+```
+
+### Step 7 — Launch
+
+| App | Command |
+|-----|---------|
+| RAGAI Video Factory | Double-click `START_RAGAI.bat` |
+| RAGAI Editor V2 | Double-click `START_EDITOR.bat` |
+| Automated Scheduler | Double-click `START_SCHEDULER.bat` |
+
+### Step 8 — Optional: Intel Arc Offline Images
+
+```cmd
+pip install "optimum[openvino]" diffusers accelerate
+```
+
+---
+
+## 34. How to Ask Kiro to Rebuild RAGAI on a New System
+
+If you need to rebuild the entire RAGAI system using Kiro AI on a new machine, use this prompt:
+
+```
+You are rebuilding the RAGAI Video Factory system on a new Windows machine.
+
+The full system consists of:
+1. RAGAI Video Factory (ragai.py) — AI video generation pipeline
+2. RAGAI Editor V2 (editor.py) — compilation editor
+3. Job Manager (job_manager.py) — crash recovery system
+4. Scheduler (scheduler.py) — automated topic queue
+
+Tech stack:
+- Python 3.11+, Windows 11, Intel Arc 140V GPU (QSV + OpenVINO)
+- FFmpeg 8.x with QSV support
+- Groq API (story + transcription), Leonardo AI (images), Edge-TTS (voice)
+- Tkinter GUI, watchdog, plyer, Pillow, OpenCV, pydub
+
+Please:
+1. Read RAGAI_SOP.md completely
+2. Recreate all Python modules as documented in Section 32
+3. Recreate all .bat launchers
+4. Recreate requirements.txt
+5. Do NOT recreate .env (user will fill in API keys)
+6. Verify with: python ragai.py --diagnose
+```
+
+---
+
+*RAGAI Video Factory v6.0 + Editor V2 — AI-powered cinematic video generation and compilation.*
+*Built by Kunal with Kiro | March 2026*

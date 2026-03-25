@@ -52,10 +52,11 @@ def _probe_edge_tts() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Task 7.1 — VOICE_MAP for all 10 supported languages
+# Task 7.1 — VOICE_MAP for all supported languages (including English)
 # ---------------------------------------------------------------------------
 
 VOICE_MAP: Dict[Language, str] = {
+    Language.EN: "en-US-JennyNeural",
     Language.HI: "hi-IN-SwaraNeural",
     Language.TA: "ta-IN-PallaviNeural",
     Language.TE: "te-IN-ShrutiNeural",
@@ -68,8 +69,9 @@ VOICE_MAP: Dict[Language, str] = {
     Language.UR: "ur-PK-UzmaNeural",
 }
 
-# gTTS language codes (Language enum value already matches the gtts lang code)
+# gTTS language codes
 GTTS_LANG_MAP: Dict[Language, str] = {
+    Language.EN: "en",
     Language.HI: "hi",
     Language.TA: "ta",
     Language.TE: "te",

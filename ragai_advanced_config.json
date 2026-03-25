@@ -1,0 +1,13 @@
+{
+  "enable_language_engine": true,
+  "enable_story_knowledge_graph": true,
+  "enable_scene_composer": true,
+  "enable_style_engine": true,
+  "enable_emotion_detection": true,
+  "enable_render_optimizer": true,
+  "enable_qa_engine": true,
+  "enable_prompt_optimizer": true,
+  "enable_manual_topic_mode": true,
+  "enable_manual_script_mode": true,
+  "enable_mic_narration_mode": true
+}

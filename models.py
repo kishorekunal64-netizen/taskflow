@@ -23,6 +23,7 @@ class Audience(str, Enum):
 
 
 class Language(str, Enum):
+    EN = "en"   # English
     HI = "hi"   # Hindi
     TA = "ta"   # Tamil
     TE = "te"   # Telugu
