@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\event_detector.py
+# hypothesis_version: 6.151.9
+
+[0.0, '^NSEBANK', '^NSEI', 'fii_net', 'fii_spike', 'fii_std_dev', 'index_move', 'index_pct', 'macro_event', 'macro_score', 'pct_change_1d', 'sector_move', 'sector_pct']

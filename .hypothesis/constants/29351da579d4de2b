@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\feature_generator.py
+# hypothesis_version: 6.151.9
+
+[100.0, 200, 'above', 'below', 'candle_count', 'close', 'nan', 'pct_change_1d', 'price_vs_sma200', 'price_vs_sma50', 'sma200', 'sma50', 'symbol', 'timeframe', 'volatility_20d']

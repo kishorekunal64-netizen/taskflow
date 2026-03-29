@@ -1,0 +1,4 @@
+# file: C:\taskflow\finplatform\..\finplatform\durable_store.py
+# hypothesis_version: 6.151.9
+
+['ai_signals', 'date', 'dii_buy', 'dii_sell', 'fii_buy', 'fii_sell', 'institutional_flows', 'market_sentiment', 'momentum_score', 'net_flow', 'ranking', 'relative_strength', 'sector', 'sector_strength']

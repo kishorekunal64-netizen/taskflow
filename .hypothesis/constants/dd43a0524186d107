@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\sector_rotation_engine.py
+# hypothesis_version: 6.151.9
+
+[0.0, '1D', 'UTC', '^NSEI', 'adx', 'close', 'date', 'datetime', 'dii_net', 'fii_net', 'first', 'high', 'low', 'rank', 'relative_strength', 'return_20d', 'symbol', 'timestamp']

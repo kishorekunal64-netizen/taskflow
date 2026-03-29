@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\data_fetcher.py
+# hypothesis_version: 6.151.9
+
+[200, 365, 1000, '.in', '15M', '15m', '1D', '1H', '1d', '1h', '2y', '4H', '4h', '5M', '5m', '60d', '730d', 'Close', 'Date', 'High', 'Low', 'Open', 'Volume', '^', 'all', 'close', 'coerce', 'data_fetcher', 'empty', 'first', 'high', 'interval', 'last', 'low', 'max', 'min', 'nan', 'ok', 'open', 'period', 'sum', 'symbol', 'timeframe', 'timestamp', 'volume']

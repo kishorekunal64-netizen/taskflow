@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\scheduler.py
+# hypothesis_version: 6.151.9
+
+[120, 300, '%H:%M', '*/15', '1D', '9-15', 'Asia/Kolkata', 'institutional_flow', 'market_refresh', 'mon-fri', 'news_ingestion']

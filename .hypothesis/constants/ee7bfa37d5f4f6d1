@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\cache_manager.py
+# hypothesis_version: 6.151.9
+
+['SHOW TABLES', '[]', '^', 'classification', 'coerce', 'composite_score', 'confidence', 'direction', 'flows.db', 'headline', 'index_momentum', 'institutional_flows', 'institutional_signal', 'last', 'macro_score', 'news.parquet', 'published', 'rationale', 'sector_perf', 'sentiment.parquet', 'signals.parquet', 'supporting_factors', 'timestamp']

@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\institutional_fetcher.py
+# hypothesis_version: 6.151.9
+
+[200, 1000, '%Y-%m-%d', 'Accept', 'Date', 'Mozilla/5.0', 'Referer', 'User-Agent', '_', 'application/json', 'date', 'diiBuyValue', 'diiSellValue', 'dii_buy', 'dii_gross_purchase', 'dii_gross_sales', 'dii_net', 'dii_purchase', 'dii_sales', 'dii_sell', 'fiiBuyValue', 'fiiSellValue', 'fii_buy', 'fii_gross_purchase', 'fii_gross_sales', 'fii_net', 'fii_purchase', 'fii_sales', 'fii_sell', 'ok', 'records', 'trade_date']

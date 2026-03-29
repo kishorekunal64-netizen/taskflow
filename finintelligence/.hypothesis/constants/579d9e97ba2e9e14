@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\news_ingester.py
+# hypothesis_version: 6.151.9
+
+['bozo_exception', 'headline', 'published', 'published_parsed', 'source', 'summary', 'title']

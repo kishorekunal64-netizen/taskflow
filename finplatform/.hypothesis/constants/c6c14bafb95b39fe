@@ -1,0 +1,4 @@
+# file: C:\taskflow\finplatform\..\finplatform\db.py
+# hypothesis_version: 6.151.9
+
+['5432', 'DB_HOST', 'DB_NAME', 'DB_PASSWORD', 'DB_PORT', 'DB_USER']

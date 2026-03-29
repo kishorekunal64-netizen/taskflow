@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\logger.py
+# hypothesis_version: 6.151.9
+
+[1024, '%Y-%m-%d %H', '%Y-%m-%d %H:%M:%S', 'finintelligence.log', 'logs', 'utf-8']

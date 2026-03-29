@@ -1,0 +1,4 @@
+# file: C:\taskflow\finintelligence\config.py
+# hypothesis_version: 6.151.9
+
+[1.0, 2.0, 240, 1440, '09:15', '15:30', '15M', '1D', '1H', '4H', '5M', 'Asia/Kolkata', '^CNXAUTO', '^CNXFMCG', '^CNXIT', '^CNXMETAL', '^CNXPHARMA', '^CNXSC', '^NSEBANK', '^NSEI', '^NSEMDCP50', 'data', 'end', 'fii_std_dev', 'index_pct', 'institutional', 'macro_score', 'market', 'sector', 'sector_pct', 'sentiment', 'start', 'tz']

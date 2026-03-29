@@ -1,0 +1,10 @@
+yfinance
+pandas
+pyarrow
+duckdb
+feedparser
+pandas-ta
+apscheduler
+hypothesis
+pytest
+pytest-mock
