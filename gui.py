@@ -222,32 +222,175 @@ def _canvas_pill_bar(canvas: tk.Canvas, x0: int, y0: int, w: int, h: int,
 
 
 # ---------------------------------------------------------------------------
-# Static hero header (wireframe premium — no grain, no floating particles)
+# Animated premium header
 # ---------------------------------------------------------------------------
 class _PremiumHeader(tk.Frame):
-    """Centered logotype: slate icon + RAGAI + muted tagline."""
+    """Animated hero header: pulsing icon glow, shimmer title, sweep accent bar."""
+
+    _PULSE_COLORS = [
+        "#ff5722", "#ff6d3a", "#ff8a5c", "#ffa07a", "#ff8a5c", "#ff6d3a",
+    ]
 
     def __init__(self, parent, **kw):
         super().__init__(parent, bg=BG_HEADER, **kw)
-        inner = tk.Frame(self, bg=BG_HEADER)
-        inner.pack(fill=tk.X, padx=32, pady=(22, 18))
-        center = tk.Frame(inner, bg=BG_HEADER)
-        center.pack()
-        icon = tk.Label(
-            center, text="🎬", font=("Segoe UI", 26), fg=ACCENT, bg=BG_HEADER,
+        self._pulse_idx = 0
+        self._sweep_x = -120
+        self._bar_phase = 0.0
+        self._dot_phase = 0.0
+
+        # ── background canvas (subtle drifting particles) ──────────────────
+        self._bg_canvas = tk.Canvas(
+            self, bg=BG_HEADER, highlightthickness=0, height=90,
         )
-        icon.pack(side=tk.LEFT, padx=(0, 12))
-        stack = tk.Frame(center, bg=BG_HEADER)
+        self._bg_canvas.pack(fill=tk.X)
+        self._particles = []  # list of [x, y, r, speed, alpha_phase]
+
+        # ── content row (placed over canvas via place) ──────────────────────
+        inner = tk.Frame(self._bg_canvas, bg=BG_HEADER)
+        inner.place(relx=0.5, rely=0.5, anchor="center")
+
+        # icon + pulsing glow dot
+        icon_frame = tk.Frame(inner, bg=BG_HEADER)
+        icon_frame.pack(side=tk.LEFT, padx=(0, 14))
+        self._icon_lbl = tk.Label(
+            icon_frame, text="🎬", font=("Segoe UI", 28),
+            fg=ACCENT, bg=BG_HEADER,
+        )
+        self._icon_lbl.pack()
+        # small glow dot below icon
+        self._dot_canvas = tk.Canvas(
+            icon_frame, width=8, height=8,
+            bg=BG_HEADER, highlightthickness=0,
+        )
+        self._dot_canvas.pack()
+
+        # title stack
+        stack = tk.Frame(inner, bg=BG_HEADER)
         stack.pack(side=tk.LEFT)
-        tk.Label(
-            stack, text="RAGAI", font=("Segoe UI", 22, "bold"),
-            fg="#ffffff", bg=BG_HEADER,
-        ).pack(anchor="w")
-        tk.Label(
+
+        # "RAGAI" — canvas for shimmer effect
+        self._title_canvas = tk.Canvas(
+            stack, width=160, height=36,
+            bg=BG_HEADER, highlightthickness=0,
+        )
+        self._title_canvas.pack(anchor="w")
+
+        self._tagline_lbl = tk.Label(
             stack, text="AI VIDEO FACTORY · CINEMATIC 4K",
-            font=("Segoe UI", 9), fg=FG_MUTED, bg=BG_HEADER,
-        ).pack(anchor="w", pady=(2, 0))
+            font=("Segoe UI", 9, "bold"), fg=FG_MUTED, bg=BG_HEADER,
+            letterSpacing=2 if hasattr(tk.Label, "letterSpacing") else 0,
+        )
+        self._tagline_lbl.pack(anchor="w", pady=(1, 0))
+
+        # ── animated accent underline bar ───────────────────────────────────
+        self._bar_canvas = tk.Canvas(
+            self, height=3, bg=BG_HEADER, highlightthickness=0,
+        )
+        self._bar_canvas.pack(fill=tk.X, side=tk.BOTTOM)
+
+        # separator
         tk.Frame(self, bg=LINE, height=1).pack(fill=tk.X, side=tk.BOTTOM)
+
+        # kick off animations after widget is visible
+        self.after(120, self._init_particles)
+        self.after(120, self._animate_title)
+        self.after(120, self._animate_dot)
+        self.after(120, self._animate_bar)
+        self.after(120, self._animate_particles)
+
+    # ── particle init ────────────────────────────────────────────────────────
+    def _init_particles(self):
+        import random
+        w = max(600, self._bg_canvas.winfo_width() or 800)
+        h = 90
+        self._particles = [
+            [random.uniform(0, w), random.uniform(0, h),
+             random.uniform(1, 2.5), random.uniform(0.3, 1.2),
+             random.uniform(0, math.pi * 2)]
+            for _ in range(22)
+        ]
+
+    # ── shimmer title ────────────────────────────────────────────────────────
+    def _animate_title(self):
+        c = self._title_canvas
+        c.delete("all")
+        w = 160
+        # base text
+        c.create_text(4, 18, text="RAGAI", font=("Segoe UI", 22, "bold"),
+                      fill="#ffffff", anchor="w")
+        # shimmer overlay — moving bright stripe
+        sx = self._sweep_x
+        for i in range(60):
+            dist = abs(i - 30)
+            alpha = max(0, 1.0 - dist / 30.0)
+            v = int(255 * alpha * 0.55)
+            col = f"#{v:02x}{v:02x}{v:02x}"
+            x = sx + i
+            if 0 <= x <= w:
+                c.create_line(x, 2, x, 34, fill=col)
+        self._sweep_x += 6
+        if self._sweep_x > w + 60:
+            self._sweep_x = -120
+        self.after(30, self._animate_title)
+
+    # ── pulsing glow dot ─────────────────────────────────────────────────────
+    def _animate_dot(self):
+        c = self._dot_canvas
+        c.delete("all")
+        t = (math.sin(self._dot_phase) + 1) / 2
+        r_outer = 3.5 + t * 1.5
+        # outer glow ring
+        glow_alpha = int(80 + t * 120)
+        glow_col = f"#{glow_alpha:02x}{int(glow_alpha*0.34):02x}{int(glow_alpha*0.13):02x}"
+        c.create_oval(4 - r_outer, 4 - r_outer, 4 + r_outer, 4 + r_outer,
+                      fill=glow_col, outline="")
+        # inner solid dot
+        c.create_oval(2, 2, 6, 6, fill=ACCENT, outline="")
+        self._dot_phase += 0.08
+        self.after(40, self._animate_dot)
+
+    # ── accent underline sweep bar ───────────────────────────────────────────
+    def _animate_bar(self):
+        c = self._bar_canvas
+        c.delete("all")
+        w = max(200, c.winfo_width() or 800)
+        h = 3
+        # dark track
+        c.create_rectangle(0, 0, w, h, fill=BG3, outline="")
+        # moving gradient segment
+        t = (math.sin(self._bar_phase) + 1) / 2
+        seg_w = int(w * 0.35)
+        cx = int(w * t)
+        x0 = max(0, cx - seg_w // 2)
+        x1 = min(w, cx + seg_w // 2)
+        # gradient fill via multiple thin lines
+        for i in range(x1 - x0):
+            dist = abs(i - (x1 - x0) // 2)
+            alpha = max(0.0, 1.0 - dist / ((x1 - x0) / 2 + 1))
+            r = int(0xff * alpha)
+            g = int(0x57 * alpha)
+            b = int(0x22 * alpha)
+            col = f"#{r:02x}{g:02x}{b:02x}"
+            c.create_line(x0 + i, 0, x0 + i, h, fill=col)
+        self._bar_phase += 0.025
+        self.after(30, self._animate_bar)
+
+    # ── drifting background particles ────────────────────────────────────────
+    def _animate_particles(self):
+        c = self._bg_canvas
+        # remove old particle items (tag "p")
+        c.delete("p")
+        w = max(600, c.winfo_width() or 800)
+        h = 90
+        for p in self._particles:
+            p[0] = (p[0] + p[3]) % w
+            p[4] += 0.04
+            alpha = int(18 + 14 * (math.sin(p[4]) + 1) / 2)
+            col = f"#{alpha:02x}{int(alpha*0.34):02x}{int(alpha*0.13):02x}"
+            r = p[2]
+            c.create_oval(p[0]-r, p[1]-r, p[0]+r, p[1]+r,
+                          fill=col, outline="", tags="p")
+        self.after(50, self._animate_particles)
 
 
 # ---------------------------------------------------------------------------
