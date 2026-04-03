@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>RAGAI — AI Video Factory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d10;--bg-header:#121214;--bg-elev:#16161c;--bg2:#16161c;--bg3:#1e1e26;
+  --border:#2a2a34;--line:#1f1f28;
+  --accent:#ff5722;--accent-dim:#c43e1a;
+  --cyan:#26c6da;--yellow:#ffca28;--green:#66bb6a;--magenta:#e040fb;
+  --fg:#f0f2f5;--fg-muted:#9ca3af;--fg2:#a8b0bc;--fg3:#6b7280;
+}
+body{background:var(--bg);color:var(--fg);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;overflow-x:hidden}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+#header{position:relative;height:110px;overflow:hidden;background:var(--bg-header)}
+#header-canvas{position:absolute;inset:0;width:100%;height:100%}
+#header-sep{height:3px;width:100%;background:linear-gradient(90deg,#ff5722,#ffca28,#ff5722)}
+
+/* ── STATUS BAR ─────────────────────────────────────────────── */
+#statusbar{background:var(--bg-header);border-bottom:1px solid var(--line);
+  padding:8px 20px;display:flex;align-items:center;gap:0;flex-wrap:wrap}
+.qbar-group{display:flex;align-items:center;gap:8px;margin-right:28px}
+.qbar-label{font-size:11px;font-weight:700;color:var(--fg2)}
+.qbar-track{width:100px;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.qbar-fill{height:100%;border-radius:4px;width:0%;transition:width 1s ease}
+.qbar-pct{font-size:11px;color:var(--fg-muted);min-width:32px}
+#ready-badge{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--fg2)}
+#ready-dot{width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 6px var(--green);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── TABS ───────────────────────────────────────────────────── */
+.tabs{display:flex;background:var(--bg-elev);border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{padding:11px 18px;cursor:pointer;color:var(--fg3);font-size:12px;font-weight:600;
+  white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s;letter-spacing:.3px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--fg2)}
+
+/* ── PANELS ─────────────────────────────────────────────────── */
+.panel{display:none;padding:16px;max-width:760px;margin:0 auto}
+.panel.active{display:block}
+
+/* ── CARDS ──────────────────────────────────────────────────── */
+.card{background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;
+  padding:16px;margin-bottom:14px}
+.card-title{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;
+  letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title::before{content:'';display:inline-block;width:3px;height:12px;
+  background:var(--accent);border-radius:2px}
+
+/* ── FORM ───────────────────────────────────────────────────── */
+label{display:block;color:var(--fg-muted);font-size:11px;font-weight:600;
+  margin-bottom:4px;margin-top:12px;text-transform:uppercase;letter-spacing:.4px}
+input,select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border);
+  color:var(--fg);padding:9px 12px;border-radius:6px;font-size:13px;outline:none;
+  font-family:inherit;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+select option{background:var(--bg3)}
+
+/* ── BUTTONS ────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 22px;border-radius:7px;border:none;cursor:pointer;
+  font-size:13px;font-weight:700;transition:all .18s;font-family:inherit}
+.btn-full{width:100%;margin-top:14px}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 0 18px rgba(255,87,34,.25)}
+.btn-primary:hover{background:#ff6d3a;box-shadow:0 0 28px rgba(255,87,34,.4)}
+.btn-primary:disabled{background:var(--bg3);color:var(--fg3);box-shadow:none;cursor:not-allowed}
+.btn-success{background:#1a4a2a;color:var(--green);border:1px solid var(--green)}
+.btn-success:hover{background:#1e5a32}
+.btn-danger{background:#3a1010;color:#ef5350;border:1px solid #ef5350}
+.btn-danger:hover{background:#4a1818}
+.btn-sm{padding:6px 14px;font-size:11px}
+
+/* ── PROGRESS ───────────────────────────────────────────────── */
+.prog-track{background:var(--bg3);border-radius:4px;height:8px;margin-top:8px;overflow:hidden}
+.prog-fill{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--accent),#ffca28);
+  transition:width .6s ease;width:0%}
+
+/* ── PIPELINE STEPS ─────────────────────────────────────────── */
+.pipeline{display:flex;gap:0;margin:14px 0}
+.pipe-step{flex:1;text-align:center;position:relative}
+.pipe-step:not(:last-child)::after{content:'';position:absolute;top:13px;right:0;
+  width:50%;height:2px;background:var(--border)}
+.pipe-step:not(:first-child)::before{content:'';position:absolute;top:13px;left:0;
+  width:50%;height:2px;background:var(--border)}
+.pipe-step.done::after,.pipe-step.done::before{background:var(--green)}
+.pipe-step.active::before{background:var(--accent)}
+.pipe-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);
+  background:var(--bg3);margin:0 auto 4px;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;color:var(--fg3);
+  position:relative;z-index:1;transition:all .3s}
+.pipe-step.done .pipe-dot{background:var(--green);border-color:var(--green);color:#fff}
+.pipe-step.active .pipe-dot{background:var(--accent);border-color:var(--accent);color:#fff;
+  box-shadow:0 0 12px rgba(255,87,34,.5)}
+.pipe-label{font-size:10px;color:var(--fg3)}
+.pipe-step.active .pipe-label{color:var(--accent)}
+.pipe-step.done .pipe-label{color:var(--green)}
+
+/* ── SCENE GRID ─────────────────────────────────────────────── */
+.scene-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.scene-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;transition:border-color .2s}
+.scene-card:hover{border-color:var(--accent)}
+.scene-card img{width:100%;height:95px;object-fit:cover;display:block}
+.scene-info{padding:6px 8px;font-size:11px;color:var(--fg-muted);
+  display:flex;justify-content:space-between;align-items:center}
+
+/* ── QUOTA BARS (scheduler) ─────────────────────────────────── */
+.quota-row{margin-bottom:12px}
+.quota-meta{display:flex;justify-content:space-between;font-size:11px;
+  color:var(--fg-muted);margin-bottom:4px}
+
+/* ── TOPIC ITEMS ────────────────────────────────────────────── */
+.topic-item{background:var(--bg3);border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;
+  transition:border-color .2s}
+.topic-item:hover{border-color:var(--accent)}
+.topic-text{flex:1;font-size:13px}
+.topic-score{color:var(--yellow);font-size:11px;font-weight:700}
+
+/* ── LOG BOX ────────────────────────────────────────────────── */
+#log-box{background:#080810;border:1px solid var(--border);border-radius:7px;
+  padding:12px;height:340px;overflow-y:auto;font-family:'Consolas','Courier New',monospace;
+  font-size:11px;color:var(--fg-muted);white-space:pre-wrap;word-break:break-all}
+.log-info{color:var(--cyan)}.log-warn{color:var(--yellow)}.log-error{color:#ef5350}
+.log-ok{color:var(--green)}
+
+/* ── STATUS DOT ─────────────────────────────────────────────── */
+.sdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.sdot-green{background:var(--green)}.sdot-red{background:#ef5350}
+  .sdot-yellow{background:var(--yellow)}
+
+/* ── MISC ───────────────────────────────────────────────────── */
+.muted{color:var(--fg-muted);font-size:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .btn{flex:1;min-width:120px}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────────── -->
+<div id="header">
+  <canvas id="header-canvas"></canvas>
+</div>
+<div id="header-sep"></div>
+
+<!-- ── STATUS BAR ─────────────────────────────────────────────────────── -->
+<div id="statusbar">
+  <div class="qbar-group">
+    <span class="qbar-label">Groq</span>
+    <div class="qbar-track"><div class="qbar-fill" id="qb-groq" style="background:var(--cyan)"></div></div>
+    <span class="qbar-pct" id="qp-groq">0%</span>
+  </div>
+  <div class="qbar-group">
+    <span class="qbar-label">Leo</span>
+    <div class="qbar-track"><div class="qbar-fill" id="qb-leo" style="background:var(--yellow)"></div></div>
+    <span class="qbar-pct" id="qp-leo">0%</span>
+  </div>
+  <div class="qbar-group">
+    <span class="qbar-label">YT API</span>
+    <div class="qbar-track"><div class="qbar-fill" id="qb-yt" style="background:var(--fg3)"></div></div>
+    <span class="qbar-pct" id="qp-yt">0%</span>
+  </div>
+  <div id="ready-badge">
+    <span id="ready-dot"></span>
+    <span>Ready</span>
+    <span style="color:var(--fg3)">·</span>
+    <span style="color:var(--fg-muted)">v9.0.0</span>
+  </div>
+</div>
+
+<!-- ── TABS ───────────────────────────────────────────────────────────── -->
+<div class="tabs">
+  <div class="tab active" data-tab="generate">⚙ Settings</div>
+  <div class="tab" data-tab="scenes">🖼 Scenes</div>
+  <div class="tab" data-tab="scheduler">⏱ Scheduler</div>
+  <div class="tab" data-tab="trends">📈 Trends</div>
+  <div class="tab" data-tab="logs">📋 Live Log</div>
+</div>
+
+<!-- ── GENERATE TAB ───────────────────────────────────────────────────── -->
+<div id="tab-generate" class="panel active">
+  <div class="card">
+    <div class="card-title">Story Source</div>
+    <label>Topic</label>
+    <textarea id="topic" placeholder="e.g. A poor farmer who saves his village from drought..."></textarea>
+    <label>Language</label>
+    <select id="language">
+      <option value="hi">Hindi</option><option value="en">English</option>
+      <option value="ta">Tamil</option><option value="te">Telugu</option>
+      <option value="bn">Bengali</option><option value="gu">Gujarati</option>
+      <option value="mr">Marathi</option><option value="kn">Kannada</option>
+      <option value="ml">Malayalam</option><option value="pa">Punjabi</option>
+    </select>
+    <label>Visual Style</label>
+    <select id="style">
+      <option value="AUTO">✨ AUTO</option>
+      <option value="DYNAMIC_EPIC">⚡ Dynamic Epic</option>
+      <option value="MYSTERY_DARK">🌑 Mystery Dark</option>
+      <option value="SPIRITUAL_DEVOTIONAL">🕉 Spiritual Devotional</option>
+      <option value="PEACEFUL_NATURE">🌿 Peaceful Nature</option>
+      <option value="ROMANTIC_DRAMA">💕 Romantic Drama</option>
+      <option value="ADVENTURE_ACTION">🏔 Adventure Action</option>
+    </select>
+    <label>Audience</label>
+    <select id="audience">
+      <option value="family">Family</option><option value="children">Children</option>
+      <option value="adults">Adults</option><option value="devotees">Devotees</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Video Settings</div>
+    <label>Quality</label>
+    <select id="quality">
+      <option value="draft">⚡ Draft 720p</option>
+      <option value="standard">📱 Standard 1080p</option>
+      <option value="high">🎬 High 1440p</option>
+      <option value="cinema" selected>🎥 4K Cinema</option>
+    </select>
+    <label>Format</label>
+    <select id="format">
+      <option value="landscape" selected>Landscape (YouTube)</option>
+      <option value="shorts">Shorts / Reels</option>
+    </select>
+    <label>Scene Count</label>
+    <select id="scenes">
+      <option value="5">5 scenes</option><option value="8" selected>8 scenes</option>
+      <option value="10">10 scenes</option><option value="12">12 scenes</option>
+      <option value="15">15 scenes</option>
+    </select>
+  </div>
+
+  <div class="card" id="gen-status" style="display:none">
+    <div class="card-title">Pipeline</div>
+    <div class="pipeline">
+      <div class="pipe-step" id="ps-story"><div class="pipe-dot">1</div><div class="pipe-label">Story</div></div>
+      <div class="pipe-step" id="ps-images"><div class="pipe-dot">2</div><div class="pipe-label">Images</div></div>
+      <div class="pipe-step" id="ps-voice"><div class="pipe-dot">3</div><div class="pipe-label">Voice</div></div>
+      <div class="pipe-step" id="ps-assembly"><div class="pipe-dot">4</div><div class="pipe-label">Assembly</div></div>
+      <div class="pipe-step" id="ps-output"><div class="pipe-dot">5</div><div class="pipe-label">Output</div></div>
+    </div>
+    <div id="gen-stage" style="font-size:12px;color:var(--accent);margin-top:6px">Starting…</div>
+    <div class="prog-track"><div class="prog-fill" id="gen-bar"></div></div>
+  </div>
+
+  <button class="btn btn-primary btn-full" id="gen-btn" onclick="startGenerate()">▶ GENERATE VIDEO</button>
+</div>
+
+<!-- ── SCENES TAB ─────────────────────────────────────────────────────── -->
+<div id="tab-scenes" class="panel">
+  <div class="card">
+    <div class="card-title">Scene Gallery</div>
+    <div id="scene-grid" class="scene-grid">
+      <p class="muted">Generate a video first to see scenes here.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCHEDULER TAB ──────────────────────────────────────────────────── -->
+<div id="tab-scheduler" class="panel">
+  <div class="card">
+    <div class="card-title">Overnight Queue</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span class="sdot sdot-red" id="sched-dot"></span>
+      <span id="sched-label" style="font-size:13px">Scheduler stopped</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--fg-muted)">
+        Queue: <strong id="queue-size">0</strong> topics
+      </span>
+    </div>
+    <div class="quota-row">
+      <div class="quota-meta"><span>Groq tokens</span><span id="groq-used">0 / 500,000</span></div>
+      <div class="prog-track"><div class="prog-fill" id="groq-bar" style="background:var(--cyan)"></div></div>
+    </div>
+    <div class="quota-row">
+      <div class="quota-meta"><span>Leonardo credits</span><span id="leo-used">0 / 150</span></div>
+      <div class="prog-track"><div class="prog-fill" id="leo-bar" style="background:var(--yellow)"></div></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn btn-success" id="sched-start-btn" onclick="startScheduler()">▶ Start Queue</button>
+      <button class="btn btn-danger" id="sched-stop-btn" onclick="stopScheduler()" style="display:none">⏹ Stop</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Add to Queue</div>
+    <label>Topic</label>
+    <input type="text" id="queue-topic" placeholder="A village girl who becomes a doctor…">
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="addToQueue()">+ Add</button>
+  </div>
+</div>
+
+<!-- ── TRENDS TAB ─────────────────────────────────────────────────────── -->
+<div id="tab-trends" class="panel">
+  <div class="card">
+    <div class="card-title">Trend Booster</div>
+    <button class="btn btn-primary" id="trends-btn" onclick="fetchTrends()">⚡ Fetch Trends</button>
+    <div id="trends-list" style="margin-top:14px">
+      <p class="muted">Click Fetch Trends to load trending topics.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── LOGS TAB ───────────────────────────────────────────────────────── -->
+<div id="tab-logs" class="panel">
+  <div class="card">
+    <div class="card-title">Live Log</div>
+    <div id="log-box"></div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHING ──────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    const name = t.dataset.tab;
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    t.classList.add('active');
+    if (name === 'logs') startLogStream();
+    if (name === 'scheduler') refreshSchedulerStatus();
+    if (name === 'scenes') loadScenes();
+  });
+});
+
+// ── CINEMATIC HEADER CANVAS ────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('header-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, embers = [], stripX = 0, scanX = -1, scanTimer = 0;
+  let logoAlpha = 0, logoY = 18;
+
+  function resize() {
+    W = canvas.width  = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // init embers
+  for (let i = 0; i < 40; i++) embers.push({
+    x: Math.random() * 1200, y: Math.random() * (H - 20),
+    r: 1 + Math.random() * 2, vx: 0.3 + Math.random() * 0.9,
+    phase: Math.random() * Math.PI * 2
+  });
+
+  function drawFrame(ts) {
+    W = canvas.offsetWidth; canvas.width = W;
+    ctx.clearRect(0, 0, W, H);
+
+    // 1. dot grid
+    ctx.fillStyle = '#1c1c22';
+    for (let gx = 0; gx < W; gx += 28)
+      for (let gy = 0; gy < H - 18; gy += 28)
+        ctx.fillRect(gx, gy, 2, 2);
+
+    // 2. embers
+    embers.forEach(e => {
+      e.x = (e.x + e.vx) % W;
+      e.phase += 0.04;
+      const a = 0.12 + 0.12 * (Math.sin(e.phase) + 1) / 2;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r * 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,87,34,${a * 0.3})`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,87,34,${a})`;
+      ctx.fill();
+    });
+
+    // 3. film strip
+    const SH = 18, FW = 22, FG = 4;
+    const sy = H - SH;
+    ctx.fillStyle = '#1a0a00';
+    ctx.fillRect(0, sy, W, SH);
+    stripX = (stripX + 0.7) % (FW + FG);
+    for (let fx = -stripX; fx < W + FW; fx += FW + FG) {
+      ctx.strokeStyle = '#5a2800'; ctx.lineWidth = 1;
+      ctx.strokeRect(fx, sy + 2, FW, SH - 4);
+      ctx.fillStyle = '#0d0600';
+      [[fx+3,sy+3],[fx+FW-7,sy+3],[fx+3,H-8],[fx+FW-7,H-8]].forEach(([hx,hy]) => {
+        ctx.fillRect(hx, hy, 4, 4);
+        ctx.strokeStyle = '#3a1800'; ctx.strokeRect(hx, hy, 4, 4);
+      });
+    }
+
+    // 4. scan line (every 4s)
+    scanTimer += 16;
+    if (scanTimer > 4000) { scanTimer = 0; scanX = 0; }
+    if (scanX >= 0) {
+      const sw = 70;
+      for (let i = 0; i < sw; i++) {
+        const a = Math.max(0, 1 - Math.abs(i - sw/2) / (sw/2)) * 0.18;
+        ctx.fillStyle = `rgba(255,87,34,${a})`;
+        ctx.fillRect(scanX - sw/2 + i, 0, 1, H - SH);
+      }
+      scanX += 10;
+      if (scanX > W + sw) scanX = -1;
+    }
+
+    // 5. logo fade-up
+    logoAlpha = Math.min(1, logoAlpha + 0.025);
+    logoY = Math.max(0, logoY * 0.82);
+    const cy = (H - SH) / 2 + logoY;
+    const cx = W / 2;
+    ctx.globalAlpha = logoAlpha;
+    // icon
+    ctx.font = '26px Segoe UI';
+    ctx.fillStyle = '#ff5722';
+    ctx.textAlign = 'right';
+    ctx.fillText('🎬', cx - 78, cy + 4);
+    // RAG (white)
+    ctx.font = 'bold 24px Segoe UI';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.fillText('RAG', cx - 72, cy + 4);
+    // AI (orange)
+    ctx.fillStyle = '#ff5722';
+    ctx.fillText('AI', cx - 72 + 56, cy + 4);
+    // tagline
+    ctx.font = 'bold 9px Segoe UI';
+    ctx.fillStyle = '#9ca3af';
+    ctx.textAlign = 'center';
+    ctx.fillText('AI VIDEO FACTORY  ·  CINEMATIC 4K', cx, cy + 22);
+    ctx.globalAlpha = 1;
+
+    requestAnimationFrame(drawFrame);
+  }
+  requestAnimationFrame(drawFrame);
+})();
+
+// ── QUOTA BARS ANIMATED IN ─────────────────────────────────────────────────
+function animateBar(fillEl, pctEl, target, color) {
+  let cur = 0;
+  const step = () => {
+    cur = Math.min(target, cur + Math.max(0.5, (target - cur) * 0.1));
+    fillEl.style.width = cur + '%';
+    pctEl.textContent = Math.round(cur) + '%';
+    if (cur < target - 0.2) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+async function loadQuotaBars() {
+  try {
+    const r = await fetch('/api/scheduler/status');
+    const d = await r.json();
+    const gPct = Math.min(100, ((d.groq_used||0) / 500000) * 100);
+    const lPct = Math.min(100, ((d.leo_used||0)  / 150)    * 100);
+    const yPct = Math.min(100, ((d.yt_used||0)   / 10000)  * 100);
+    setTimeout(() => animateBar(document.getElementById('qb-groq'), document.getElementById('qp-groq'), gPct), 300);
+    setTimeout(() => animateBar(document.getElementById('qb-leo'),  document.getElementById('qp-leo'),  lPct), 500);
+    setTimeout(() => animateBar(document.getElementById('qb-yt'),   document.getElementById('qp-yt'),   yPct), 700);
+  } catch(e) {}
+}
+loadQuotaBars();
+
+// ── GENERATE ───────────────────────────────────────────────────────────────
+const PIPE_STEPS = ['story','images','voice','assembly','output'];
+function setPipeStep(stage) {
+  const sl = (stage||'').toLowerCase();
+  let active = -1;
+  if (sl.includes('story'))    active = 0;
+  else if (sl.includes('image')) active = 1;
+  else if (sl.includes('voice')) active = 2;
+  else if (sl.includes('assembl')) active = 3;
+  else if (sl.includes('output')||sl.includes('done')) active = 4;
+  PIPE_STEPS.forEach((s, i) => {
+    const el = document.getElementById('ps-' + s);
+    el.className = 'pipe-step' + (i < active ? ' done' : i === active ? ' active' : '');
+    el.querySelector('.pipe-dot').textContent = i < active ? '✓' : i + 1;
+  });
+}
+
+async function startGenerate() {
+  const topic = document.getElementById('topic').value.trim();
+  if (!topic) { alert('Please enter a topic'); return; }
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
+  document.getElementById('gen-status').style.display = 'block';
+  const payload = {
+    topic, language: document.getElementById('language').value,
+    style: document.getElementById('style').value,
+    quality: document.getElementById('quality').value,
+    format: document.getElementById('format').value,
+    scenes: parseInt(document.getElementById('scenes').value),
+    audience: document.getElementById('audience').value,
+  };
+  const resp = await fetch('/api/generate', {method:'POST',
+    headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  const data = await resp.json();
+  if (data.status === 'started') { pollProgress(); }
+  else { alert('Error: ' + data.message); resetGenBtn(); }
+}
+
+function resetGenBtn() {
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = false; btn.textContent = '▶ GENERATE VIDEO';
+}
+
+async function pollProgress() {
+  const resp = await fetch('/api/status');
+  const data = await resp.json();
+  const stage = data.stage || 'Processing…';
+  document.getElementById('gen-stage').textContent = stage;
+  document.getElementById('gen-bar').style.width = (data.progress || 0) + '%';
+  setPipeStep(stage);
+  if (data.status === 'running') { setTimeout(pollProgress, 2000); }
+  else if (data.status === 'done') {
+    document.getElementById('gen-stage').textContent = '✅ Complete! Video saved.';
+    document.getElementById('gen-bar').style.width = '100%';
+    setPipeStep('output'); resetGenBtn(); loadScenes();
+  } else if (data.status === 'error') {
+    document.getElementById('gen-stage').textContent = '❌ ' + data.message;
+    resetGenBtn();
+  }
+}
+
+// ── SCENES ─────────────────────────────────────────────────────────────────
+async function loadScenes() {
+  const resp = await fetch('/api/scenes');
+  const data = await resp.json();
+  const grid = document.getElementById('scene-grid');
+  if (!data.scenes || !data.scenes.length) {
+    grid.innerHTML = '<p class="muted">No scenes yet.</p>'; return;
+  }
+  grid.innerHTML = data.scenes.map((s, i) => `
+    <div class="scene-card">
+      <img src="/api/scene_thumb/${i}" alt="Scene ${i+1}" onerror="this.style.display='none'">
+      <div class="scene-info">
+        <span>Scene ${i+1}</span>
+        <button class="btn btn-primary btn-sm" onclick="regenScene(${i})">↺</button>
+      </div>
+    </div>`).join('');
+}
+async function regenScene(idx) {
+  await fetch('/api/regen_scene/' + idx, {method:'POST'});
+  setTimeout(loadScenes, 3000);
+}
+
+// ── SCHEDULER ──────────────────────────────────────────────────────────────
+async function startScheduler() {
+  await fetch('/api/scheduler/start', {method:'POST'});
+  document.getElementById('sched-start-btn').style.display = 'none';
+  document.getElementById('sched-stop-btn').style.display = '';
+  refreshSchedulerStatus();
+}
+async function stopScheduler() {
+  await fetch('/api/scheduler/stop', {method:'POST'});
+  document.getElementById('sched-start-btn').style.display = '';
+  document.getElementById('sched-stop-btn').style.display = 'none';
+  refreshSchedulerStatus();
+}
+async function refreshSchedulerStatus() {
+  try {
+    const resp = await fetch('/api/scheduler/status');
+    const data = await resp.json();
+    const dot = document.getElementById('sched-dot');
+    const lbl = document.getElementById('sched-label');
+    if (data.running) {
+      dot.className = 'sdot sdot-green';
+      lbl.textContent = 'Running — ' + (data.current_topic || 'idle');
+      document.getElementById('sched-start-btn').style.display = 'none';
+      document.getElementById('sched-stop-btn').style.display = '';
+    } else {
+      dot.className = 'sdot sdot-red';
+      lbl.textContent = 'Scheduler stopped';
+    }
+    document.getElementById('queue-size').textContent = data.queue_size || 0;
+    const gPct = Math.min(100, ((data.groq_used||0)/500000)*100);
+    const lPct = Math.min(100, ((data.leo_used||0)/150)*100);
+    document.getElementById('groq-bar').style.width = gPct + '%';
+    document.getElementById('groq-used').textContent = (data.groq_used||0).toLocaleString() + ' / 500,000';
+    document.getElementById('leo-bar').style.width = lPct + '%';
+    document.getElementById('leo-used').textContent = (data.leo_used||0) + ' / 150';
+  } catch(e) {}
+}
+async function addToQueue() {
+  const topic = document.getElementById('queue-topic').value.trim();
+  if (!topic) return;
+  await fetch('/api/queue/add', {method:'POST',
+    headers:{'Content-Type':'application/json'}, body: JSON.stringify({topic})});
+  document.getElementById('queue-topic').value = '';
+  refreshSchedulerStatus();
+}
+
+// ── TRENDS ─────────────────────────────────────────────────────────────────
+async function fetchTrends() {
+  const btn = document.getElementById('trends-btn');
+  btn.disabled = true; btn.textContent = '⏳ Fetching…';
+  const resp = await fetch('/api/trends/fetch', {method:'POST'});
+  const data = await resp.json();
+  btn.disabled = false; btn.textContent = '⚡ Fetch Trends';
+  const list = document.getElementById('trends-list');
+  if (!data.topics || !data.topics.length) {
+    list.innerHTML = '<p class="muted">No new topics found.</p>'; return;
+  }
+  list.innerHTML = data.topics.map(t => `
+    <div class="topic-item">
+      <div class="topic-text">${t.topic}</div>
+      <div class="topic-score">⭐ ${t.score}</div>
+      <button class="btn btn-success btn-sm" onclick="addTrendToQueue('${t.topic.replace(/'/g,"\\'")}')">+</button>
+    </div>`).join('');
+}
+async function addTrendToQueue(topic) {
+  await fetch('/api/queue/add', {method:'POST',
+    headers:{'Content-Type':'application/json'}, body: JSON.stringify({topic})});
+  alert('Added: ' + topic);
+}
+
+// ── LIVE LOG ───────────────────────────────────────────────────────────────
+let logSource = null;
+function startLogStream() {
+  if (logSource) return;
+  logSource = new EventSource('/api/log_stream');
+  logSource.onmessage = e => {
+    const box = document.getElementById('log-box');
+    const div = document.createElement('div');
+    const msg = e.data;
+    div.className = msg.includes('ERROR') ? 'log-error'
+                  : msg.includes('WARNING') ? 'log-warn'
+                  : msg.includes('✅') || msg.includes('Done') ? 'log-ok'
+                  : 'log-info';
+    div.textContent = msg;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    if (box.children.length > 300) box.removeChild(box.firstChild);
+  };
+}
+
+setInterval(refreshSchedulerStatus, 10000);
+</script>
+</body>
+</html>
