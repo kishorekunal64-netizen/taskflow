@@ -1,8 +1,8 @@
 """
-auto_pipeline.py - Fully automated compilation pipeline for RAGAI Editor V2.
+auto_pipeline.py - Fully automated compilation pipeline for RAGAI Editor V3.
 
-Upgraded: uses SmartCompiler (duration-based) + StoryFlowOptimizer + ClipSimilarityDetector
-instead of fixed batch count. Also generates viral title via TitleGenerator.
+Upgraded: smart grouping by topic similarity + emotion arc + duration target.
+Prevents same topic repeated (clip diversity). Supports 10/15/30 min targets.
 """
 from __future__ import annotations
 
@@ -38,6 +38,7 @@ class AutoPipeline:
         groq_api_key: str = "",
         on_export_trigger: Optional[Callable] = None,
         on_status_update: Optional[Callable[[str], None]] = None,
+        target_minutes: int = 10,
     ):
         self._cm = clip_manager
         self._timeline = timeline
@@ -54,6 +55,8 @@ class AutoPipeline:
         self._smart = SmartCompiler()
         self._optimizer = StoryFlowOptimizer()
         self._similarity = ClipSimilarityDetector(threshold=0.6)
+        self._target_seconds = target_minutes * 60
+        self._seen_topics: set = set()   # diversity tracking
 
     @property
     def enabled(self) -> bool:
@@ -88,6 +91,11 @@ class AutoPipeline:
             self._pending.clear()
         self._update_status()
 
+    def set_target_minutes(self, minutes: int):
+        """Set compilation target length (10/15/30 min)."""
+        self._target_seconds = max(60, minutes * 60)
+        self._post_status(f"Auto Mode: target set to {minutes} min")
+
     def _run_compilation(self):
         with self._lock:
             all_pending = list(self._pending)
@@ -97,9 +105,20 @@ class AutoPipeline:
 
         # 1. Deduplicate similar clips
         diverse = self._similarity.filter_diverse(all_pending)
-        self._post_status(f"Auto Mode: {len(diverse)} diverse clips after similarity filter")
 
-        # 2. Smart duration-based selection
+        # 2. Clip diversity — prevent same topic repeated consecutively
+        seen = set()
+        deduped = []
+        for c in diverse:
+            key = (c.topic or c.filename)[:30].lower()
+            if key not in seen:
+                deduped.append(c)
+                seen.add(key)
+        diverse = deduped
+        self._post_status(f"Auto Mode: {len(diverse)} diverse clips after dedup")
+
+        # 3. Smart duration-based selection (respect target length)
+        self._smart.target_duration = self._target_seconds
         selected, title = self._smart.select_clips(diverse)
         if not selected:
             self._post_status("Auto Mode: not enough clips - waiting")
@@ -107,11 +126,11 @@ class AutoPipeline:
                 self._pending.extend(all_pending)
             return
 
-        # 3. Story flow optimization
-        self._post_status("Auto Mode: optimizing story flow...")
+        # 4. Story flow optimization (emotion arc)
+        self._post_status("Auto Mode: optimizing story arc...")
         ordered = self._optimizer.optimize(selected)
 
-        # 4. Variation
+        # 5. Variation + transitions
         clips = self._variation.shuffle_clips(ordered)
         transitions = self._variation.assign_transitions(len(clips))
         entries: List[TimelineEntry] = [

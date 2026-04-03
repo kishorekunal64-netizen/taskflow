@@ -1,0 +1,22 @@
+{
+  "output_dir": "./output",
+  "compiled_dir": "./compiled",
+  "default_quality": "cinema",
+  "default_language": "hi",
+  "enable_qsv": true,
+  "hook_enabled": true,
+  "outro_enabled": true,
+  "auto_thumbnail": true,
+  "auto_titles": true,
+  "enable_waveform_view": true,
+  "enable_scene_markers": true,
+  "enable_preview_player": true,
+  "enable_smart_compilation": true,
+  "enable_generator_integration": true,
+  "enable_scheduler_panel": true,
+  "enable_fast_preview_render": true,
+  "compilation_target_minutes": 10,
+  "preview_quality": "720p",
+  "preview_crf": 28,
+  "preview_preset": "ultrafast"
+}

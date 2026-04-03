@@ -24,11 +24,17 @@ def main():
     # ------------------------------------------------------------------ logging
     configure_logging()
     logger = logging.getLogger(__name__)
-    logger.info("RAGAI Editor V2 starting…")
+    logger.info("RAGAI Editor V3 starting…")
+
+    # ------------------------------------------------------------------ CLI args
+    load_folder = ""
+    if len(sys.argv) >= 3 and sys.argv[1] == "--load":
+        load_folder = sys.argv[2]
+        logger.info("Load folder: %s", load_folder)
 
     # ------------------------------------------------------------------ config
     cfg = load_editor_config()
-    output_dir  = Path(cfg["output_dir"])
+    output_dir   = Path(cfg["output_dir"])
     compiled_dir = Path(cfg["compiled_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
     compiled_dir.mkdir(parents=True, exist_ok=True)
@@ -72,6 +78,8 @@ def main():
             output_dir=output_dir,
             compiled_dir=compiled_dir,
             groq_api_key=groq_api_key,
+            cfg=cfg,
+            load_folder=load_folder,
         )
         app.protocol("WM_DELETE_WINDOW", app.on_close)
         logger.info("GUI launched")
