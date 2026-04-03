@@ -222,174 +222,191 @@ def _canvas_pill_bar(canvas: tk.Canvas, x0: int, y0: int, w: int, h: int,
 
 
 # ---------------------------------------------------------------------------
-# Animated premium header
+# Cinematic premium header  (v2 — ember particles + film strip + scan line)
 # ---------------------------------------------------------------------------
 class _PremiumHeader(tk.Frame):
-    """Animated hero header: pulsing icon glow, shimmer title, sweep accent bar."""
+    """
+    Full-canvas animated header:
+      • Ember particle field + subtle dot-grid background
+      • Scrolling film-strip along the bottom edge
+      • Periodic scan-line sweep (broadcast monitor feel)
+      • Logo fade-up entrance with 'AI' in orange accent
+      • Orange-to-gold gradient accent separator
+    """
 
-    _PULSE_COLORS = [
-        "#ff5722", "#ff6d3a", "#ff8a5c", "#ffa07a", "#ff8a5c", "#ff6d3a",
-    ]
+    _HEADER_H   = 110   # total canvas height
+    _STRIP_H    = 18    # film-strip row height
+    _FRAME_W    = 22    # one film frame width
+    _FRAME_GAP  = 4     # gap between frames
+    _N_EMBERS   = 38    # particle count
+    _SCAN_CYCLE = 4000  # ms between scan sweeps
 
     def __init__(self, parent, **kw):
+        import random
         super().__init__(parent, bg=BG_HEADER, **kw)
-        self._pulse_idx = 0
-        self._sweep_x = -120
-        self._bar_phase = 0.0
-        self._dot_phase = 0.0
 
-        # ── background canvas (subtle drifting particles) ──────────────────
-        self._bg_canvas = tk.Canvas(
-            self, bg=BG_HEADER, highlightthickness=0, height=90,
+        # ── single full-width canvas ────────────────────────────────────────
+        self._c = tk.Canvas(
+            self, bg=BG_HEADER, highlightthickness=0,
+            height=self._HEADER_H,
         )
-        self._bg_canvas.pack(fill=tk.X)
-        self._particles = []  # list of [x, y, r, speed, alpha_phase]
+        self._c.pack(fill=tk.X)
 
-        # ── content row (placed over canvas via place) ──────────────────────
-        inner = tk.Frame(self._bg_canvas, bg=BG_HEADER)
-        inner.place(relx=0.5, rely=0.5, anchor="center")
-
-        # icon + pulsing glow dot
-        icon_frame = tk.Frame(inner, bg=BG_HEADER)
-        icon_frame.pack(side=tk.LEFT, padx=(0, 14))
-        self._icon_lbl = tk.Label(
-            icon_frame, text="🎬", font=("Segoe UI", 28),
-            fg=ACCENT, bg=BG_HEADER,
-        )
-        self._icon_lbl.pack()
-        # small glow dot below icon
-        self._dot_canvas = tk.Canvas(
-            icon_frame, width=8, height=8,
-            bg=BG_HEADER, highlightthickness=0,
-        )
-        self._dot_canvas.pack()
-
-        # title stack
-        stack = tk.Frame(inner, bg=BG_HEADER)
-        stack.pack(side=tk.LEFT)
-
-        # "RAGAI" — canvas for shimmer effect
-        self._title_canvas = tk.Canvas(
-            stack, width=160, height=36,
-            bg=BG_HEADER, highlightthickness=0,
-        )
-        self._title_canvas.pack(anchor="w")
-
-        self._tagline_lbl = tk.Label(
-            stack, text="AI VIDEO FACTORY · CINEMATIC 4K",
-            font=("Segoe UI", 9, "bold"), fg=FG_MUTED, bg=BG_HEADER,
-        )
-        self._tagline_lbl.pack(anchor="w", pady=(1, 0))
-
-        # ── animated accent underline bar ───────────────────────────────────
-        self._bar_canvas = tk.Canvas(
+        # ── accent separator (orange→gold gradient, 3 px) ───────────────────
+        self._sep = tk.Canvas(
             self, height=3, bg=BG_HEADER, highlightthickness=0,
         )
-        self._bar_canvas.pack(fill=tk.X, side=tk.BOTTOM)
+        self._sep.pack(fill=tk.X)
 
-        # separator
-        tk.Frame(self, bg=LINE, height=1).pack(fill=tk.X, side=tk.BOTTOM)
-
-        # kick off animations after widget is visible
-        self.after(120, self._init_particles)
-        self.after(120, self._animate_title)
-        self.after(120, self._animate_dot)
-        self.after(120, self._animate_bar)
-        self.after(120, self._animate_particles)
-
-    # ── particle init ────────────────────────────────────────────────────────
-    def _init_particles(self):
-        import random
-        w = max(600, self._bg_canvas.winfo_width() or 800)
-        h = 90
-        self._particles = [
-            [random.uniform(0, w), random.uniform(0, h),
-             random.uniform(1, 2.5), random.uniform(0.3, 1.2),
-             random.uniform(0, math.pi * 2)]
-            for _ in range(22)
+        # ── state ────────────────────────────────────────────────────────────
+        rng = random.Random()
+        W = 1200  # initial guess; corrected on first draw
+        H = self._HEADER_H
+        self._embers = [
+            [rng.uniform(0, W), rng.uniform(0, H - self._STRIP_H - 4),
+             rng.uniform(1.0, 2.8),          # radius
+             rng.uniform(0.25, 1.1),         # drift speed px/frame
+             rng.uniform(0, math.pi * 2),    # alpha phase
+             rng.uniform(-0.15, 0.15)]       # vertical drift
+            for _ in range(self._N_EMBERS)
         ]
+        self._strip_x   = 0.0          # film-strip scroll offset
+        self._scan_x    = -1           # -1 = idle
+        self._scan_tick = 0
+        self._logo_y_off = 18          # entrance animation offset (px down)
+        self._logo_alpha = 0           # 0..255 entrance fade
+        self._sep_alpha  = 0           # separator fade-in
 
-    # ── shimmer title ────────────────────────────────────────────────────────
-    def _animate_title(self):
-        c = self._title_canvas
+        # kick off after layout
+        self.after(80,  self._start_entrance)
+        self.after(100, self._loop)
+        self.after(self._SCAN_CYCLE, self._trigger_scan)
+
+    # ── entrance ─────────────────────────────────────────────────────────────
+    def _start_entrance(self):
+        self._logo_y_off = 18
+        self._logo_alpha = 0
+        self._sep_alpha  = 0
+        self._entrance_step()
+
+    def _entrance_step(self):
+        # spring-ease: move 22% of remaining distance each frame
+        self._logo_y_off  = max(0.0, self._logo_y_off  * 0.78)
+        self._logo_alpha  = min(255, self._logo_alpha + 14)
+        self._sep_alpha   = min(255, self._sep_alpha   + 10)
+        if self._logo_y_off > 0.3 or self._logo_alpha < 255:
+            self.after(16, self._entrance_step)
+
+    # ── scan-line trigger ─────────────────────────────────────────────────────
+    def _trigger_scan(self):
+        self._scan_x = 0
+        self.after(self._SCAN_CYCLE, self._trigger_scan)
+
+    # ── main render loop (~60 fps) ────────────────────────────────────────────
+    def _loop(self):
+        c = self._c
         c.delete("all")
-        w = 160
-        # base text
-        c.create_text(4, 18, text="RAGAI", font=("Segoe UI", 22, "bold"),
-                      fill="#ffffff", anchor="w")
-        # shimmer overlay — moving bright stripe
-        sx = self._sweep_x
-        for i in range(60):
-            dist = abs(i - 30)
-            alpha = max(0, 1.0 - dist / 30.0)
-            v = int(255 * alpha * 0.55)
-            col = f"#{v:02x}{v:02x}{v:02x}"
-            x = sx + i
-            if 0 <= x <= w:
-                c.create_line(x, 2, x, 34, fill=col)
-        self._sweep_x += 6
-        if self._sweep_x > w + 60:
-            self._sweep_x = -120
-        self.after(30, self._animate_title)
+        W = max(800, c.winfo_width() or 1200)
+        H = self._HEADER_H
 
-    # ── pulsing glow dot ─────────────────────────────────────────────────────
-    def _animate_dot(self):
-        c = self._dot_canvas
-        c.delete("all")
-        t = (math.sin(self._dot_phase) + 1) / 2
-        r_outer = 3.5 + t * 1.5
-        # outer glow ring
-        glow_alpha = int(80 + t * 120)
-        glow_col = f"#{glow_alpha:02x}{int(glow_alpha*0.34):02x}{int(glow_alpha*0.13):02x}"
-        c.create_oval(4 - r_outer, 4 - r_outer, 4 + r_outer, 4 + r_outer,
-                      fill=glow_col, outline="")
-        # inner solid dot
-        c.create_oval(2, 2, 6, 6, fill=ACCENT, outline="")
-        self._dot_phase += 0.08
-        self.after(40, self._animate_dot)
+        # 1. dot-grid background
+        grid_step = 28
+        for gx in range(0, W, grid_step):
+            for gy in range(0, H - self._STRIP_H, grid_step):
+                c.create_oval(gx-1, gy-1, gx+1, gy+1, fill="#1c1c22", outline="")
 
-    # ── accent underline sweep bar ───────────────────────────────────────────
-    def _animate_bar(self):
-        c = self._bar_canvas
-        c.delete("all")
-        w = max(200, c.winfo_width() or 800)
-        h = 3
-        # dark track
-        c.create_rectangle(0, 0, w, h, fill=BG3, outline="")
-        # moving gradient segment
-        t = (math.sin(self._bar_phase) + 1) / 2
-        seg_w = int(w * 0.35)
-        cx = int(w * t)
-        x0 = max(0, cx - seg_w // 2)
-        x1 = min(w, cx + seg_w // 2)
-        # gradient fill via multiple thin lines
-        for i in range(x1 - x0):
-            dist = abs(i - (x1 - x0) // 2)
-            alpha = max(0.0, 1.0 - dist / ((x1 - x0) / 2 + 1))
-            r = int(0xff * alpha)
-            g = int(0x57 * alpha)
-            b = int(0x22 * alpha)
-            col = f"#{r:02x}{g:02x}{b:02x}"
-            c.create_line(x0 + i, 0, x0 + i, h, fill=col)
-        self._bar_phase += 0.025
-        self.after(30, self._animate_bar)
+        # 2. ember particles
+        for e in self._embers:
+            e[0] = (e[0] + e[1]) % W
+            e[1] += e[5] * 0.02          # gentle vertical drift
+            e[1] = max(0.2, min(1.2, e[1]))
+            e[4] += 0.045
+            alpha = int(22 + 20 * (math.sin(e[4]) + 1) / 2)
+            r = e[2]
+            # outer glow
+            ga = max(6, alpha // 3)
+            gc = f"#{ga:02x}{int(ga*0.22):02x}00"
+            c.create_oval(e[0]-r*2, e[1]-r*2, e[0]+r*2, e[1]+r*2,
+                          fill=gc, outline="")
+            # core ember
+            ec = f"#{alpha:02x}{int(alpha*0.34):02x}00"
+            c.create_oval(e[0]-r, e[1]-r, e[0]+r, e[1]+r,
+                          fill=ec, outline="")
 
-    # ── drifting background particles ────────────────────────────────────────
-    def _animate_particles(self):
-        c = self._bg_canvas
-        # remove old particle items (tag "p")
-        c.delete("p")
-        w = max(600, c.winfo_width() or 800)
-        h = 90
-        for p in self._particles:
-            p[0] = (p[0] + p[3]) % w
-            p[4] += 0.04
-            alpha = int(18 + 14 * (math.sin(p[4]) + 1) / 2)
-            col = f"#{alpha:02x}{int(alpha*0.34):02x}{int(alpha*0.13):02x}"
-            r = p[2]
-            c.create_oval(p[0]-r, p[1]-r, p[0]+r, p[1]+r,
-                          fill=col, outline="", tags="p")
-        self.after(50, self._animate_particles)
+        # 3. film strip (bottom edge of canvas, above separator)
+        sy = H - self._STRIP_H
+        c.create_rectangle(0, sy, W, H, fill="#1a0a00", outline="")
+        self._strip_x = (self._strip_x + 0.8) % (self._FRAME_W + self._FRAME_GAP)
+        fx = -self._strip_x
+        while fx < W + self._FRAME_W:
+            # frame border
+            c.create_rectangle(fx, sy+2, fx+self._FRAME_W, H-2,
+                                fill="#2a1200", outline="#5a2800", width=1)
+            # sprocket holes top & bottom
+            for hx in (fx+4, fx+self._FRAME_W-8):
+                c.create_rectangle(hx, sy+3, hx+4, sy+7,
+                                   fill="#0d0600", outline="#3a1800")
+                c.create_rectangle(hx, H-8, hx+4, H-3,
+                                   fill="#0d0600", outline="#3a1800")
+            fx += self._FRAME_W + self._FRAME_GAP
+
+        # 4. scan line
+        if self._scan_x >= 0:
+            sw = 60
+            sx0 = self._scan_x - sw
+            for i in range(sw):
+                dist = abs(i - sw // 2)
+                alpha = max(0, 1.0 - dist / (sw / 2))
+                sa = int(alpha * 55)
+                sc = f"#{sa:02x}{int(sa*0.34):02x}00"
+                xp = sx0 + i
+                if 0 <= xp <= W:
+                    c.create_line(xp, 0, xp, H - self._STRIP_H,
+                                  fill=sc, width=1)
+            self._scan_x += 9
+            if self._scan_x > W + sw:
+                self._scan_x = -1
+
+        # 5. logo (fade-up entrance)
+        cy = (H - self._STRIP_H) // 2 + int(self._logo_y_off)
+        a = self._logo_alpha
+        # icon
+        icon_col = f"#{min(255,int(a)):02x}{int(min(255,a)*0.34):02x}{int(min(255,a)*0.13):02x}"
+        c.create_text(W//2 - 90, cy - 4, text="🎬",
+                      font=("Segoe UI", 26), fill=icon_col, anchor="e")
+        # "RAG" in white, "AI" in orange
+        fg_w = f"#{min(255,a):02x}{min(255,a):02x}{min(255,a):02x}"
+        c.create_text(W//2 - 82, cy - 6, text="RAG",
+                      font=("Segoe UI", 24, "bold"), fill=fg_w, anchor="w")
+        ai_a = min(255, a)
+        ai_col = f"#{ai_a:02x}{int(ai_a*0.34):02x}{int(ai_a*0.13):02x}"
+        c.create_text(W//2 - 82 + 58, cy - 6, text="AI",
+                      font=("Segoe UI", 24, "bold"), fill=ai_col, anchor="w")
+        # tagline
+        tg_a = max(0, a - 60)
+        tg_col = f"#{int(tg_a*0.61):02x}{int(tg_a*0.64):02x}{int(tg_a*0.69):02x}"
+        c.create_text(W//2 - 82 + 2, cy + 18,
+                      text="AI VIDEO FACTORY  ·  CINEMATIC 4K",
+                      font=("Segoe UI", 9, "bold"), fill=tg_col, anchor="w")
+
+        # 6. separator gradient
+        self._draw_sep(W)
+
+        self.after(16, self._loop)   # ~60 fps
+
+    # ── accent separator ──────────────────────────────────────────────────────
+    def _draw_sep(self, W: int):
+        s = self._sep
+        s.delete("all")
+        a = self._sep_alpha
+        # orange → gold gradient
+        for i in range(W):
+            t = i / max(1, W - 1)
+            r = int((0xff * (1 - t) + 0xff * t) * a / 255)
+            g = int((0x57 * (1 - t) + 0xca * t) * a / 255)
+            b = int((0x22 * (1 - t) + 0x28 * t) * a / 255)
+            col = f"#{min(255,r):02x}{min(255,g):02x}{min(255,b):02x}"
+            s.create_line(i, 0, i, 3, fill=col)
 
 
 # ---------------------------------------------------------------------------
@@ -913,42 +930,96 @@ class RAGAIApp(tk.Tk):
                  font=("Segoe UI", 9, "bold"), fg=ACCENT, bg=BG_ELEV).pack(side=tk.RIGHT)
 
     def _build_top_bar(self):
-        bar = tk.Frame(self, bg=BG_HEADER, padx=20, pady=10)
+        """Animated status bar: Groq / Leo / YT quota bars + Ready badge."""
+        bar = tk.Frame(self, bg=BG_HEADER, padx=20, pady=9)
         bar.pack(fill=tk.X, after=self._header)
         tk.Frame(bar, bg=LINE, height=1).pack(fill=tk.X, side=tk.BOTTOM)
+
         left = tk.Frame(bar, bg=BG_HEADER)
         left.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self._top_groq_var = tk.StringVar(value="• Groq —")
-        self._top_leo_var = tk.StringVar(value="• Leo —")
-        tk.Label(left, textvariable=self._top_groq_var, font=FONT_SMALL,
-                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 14))
-        self._top_groq_canvas = tk.Canvas(left, bg=BG_HEADER, height=10, width=120,
-                                          highlightthickness=0)
-        self._top_groq_canvas.pack(side=tk.LEFT, padx=(0, 18))
-        tk.Label(left, textvariable=self._top_leo_var, font=FONT_SMALL,
-                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 14))
-        self._top_leo_canvas = tk.Canvas(left, bg=BG_HEADER, height=10, width=120,
-                                          highlightthickness=0)
-        self._top_leo_canvas.pack(side=tk.LEFT)
-        self._top_ready_var = tk.StringVar(value=f"Ready · v{RAGAI_VERSION}")
+
+        # ── Groq bar ──────────────────────────────────────────────────────
+        tk.Label(left, text="Groq", font=("Segoe UI", 9, "bold"),
+                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 8))
+        self._top_groq_canvas = tk.Canvas(
+            left, bg=BG_HEADER, height=8, width=110, highlightthickness=0)
+        self._top_groq_canvas.pack(side=tk.LEFT, padx=(0, 6))
+        self._top_groq_var = tk.StringVar(value="0%")
+        tk.Label(left, textvariable=self._top_groq_var,
+                 font=("Segoe UI", 9), fg=FG_MUTED, bg=BG_HEADER,
+                 width=5, anchor="w").pack(side=tk.LEFT, padx=(0, 22))
+
+        # ── Leo bar ───────────────────────────────────────────────────────
+        tk.Label(left, text="Leo", font=("Segoe UI", 9, "bold"),
+                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 8))
+        self._top_leo_canvas = tk.Canvas(
+            left, bg=BG_HEADER, height=8, width=110, highlightthickness=0)
+        self._top_leo_canvas.pack(side=tk.LEFT, padx=(0, 6))
+        self._top_leo_var = tk.StringVar(value="0%")
+        tk.Label(left, textvariable=self._top_leo_var,
+                 font=("Segoe UI", 9), fg=FG_MUTED, bg=BG_HEADER,
+                 width=5, anchor="w").pack(side=tk.LEFT, padx=(0, 22))
+
+        # ── YT API bar ────────────────────────────────────────────────────
+        tk.Label(left, text="YT API", font=("Segoe UI", 9, "bold"),
+                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 8))
+        self._top_yt_canvas = tk.Canvas(
+            left, bg=BG_HEADER, height=8, width=110, highlightthickness=0)
+        self._top_yt_canvas.pack(side=tk.LEFT, padx=(0, 6))
+        self._top_yt_var = tk.StringVar(value="0%")
+        tk.Label(left, textvariable=self._top_yt_var,
+                 font=("Segoe UI", 9), fg=FG_MUTED, bg=BG_HEADER,
+                 width=5, anchor="w").pack(side=tk.LEFT)
+
+        # ── Ready badge ───────────────────────────────────────────────────
+        self._top_ready_var = tk.StringVar(value=f"v{RAGAI_VERSION}")
         ready_fr = tk.Frame(bar, bg=BG_HEADER)
         ready_fr.pack(side=tk.RIGHT)
         self._top_ready_dot = tk.Label(
             ready_fr, text="●", font=("Segoe UI", 9), fg=GREEN_N, bg=BG_HEADER)
-        self._top_ready_dot.pack(side=tk.LEFT, padx=(0, 6))
-        tk.Label(ready_fr, textvariable=self._top_ready_var, font=("Segoe UI", 10),
-                 fg=FG, bg=BG_HEADER).pack(side=tk.LEFT)
+        self._top_ready_dot.pack(side=tk.LEFT, padx=(0, 5))
+        tk.Label(ready_fr, text="Ready", font=("Segoe UI", 9, "bold"),
+                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 6))
+        tk.Label(ready_fr, text="·", font=("Segoe UI", 9),
+                 fg=FG3, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 6))
+        tk.Label(ready_fr, textvariable=self._top_ready_var,
+                 font=("Segoe UI", 9), fg=FG_MUTED, bg=BG_HEADER).pack(side=tk.LEFT)
+
+        # stagger bar entrance animations
+        self.after(300, lambda: self._animate_bar_in(self._top_groq_canvas, 0, CYAN))
+        self.after(500, lambda: self._animate_bar_in(self._top_leo_canvas,  0, YELLOW_N))
+        self.after(700, lambda: self._animate_bar_in(self._top_yt_canvas,   0, FG3))
+
+    def _animate_bar_in(self, canvas: tk.Canvas, current_pct: float, color: str,
+                        target_pct: float = None):
+        """Animate a quota bar from 0 to its real value on load."""
+        if target_pct is None:
+            # first call — load real value
+            st = _load_quota_state()
+            if canvas is self._top_groq_canvas:
+                target_pct = min(100, st.get("groq_used", 0) * 100 / max(1, _GROQ_DAILY))
+            elif canvas is self._top_leo_canvas:
+                target_pct = min(100, st.get("leonardo_used", 0) * 100 / max(1, _LEONARDO_DAILY))
+            else:
+                target_pct = min(100, st.get("yt_used", 0) * 100 / max(1, _YT_UNITS_DAILY))
+        step = max(0.8, (target_pct - current_pct) * 0.12)
+        current_pct = min(target_pct, current_pct + step)
+        self._draw_mini_bar(canvas, current_pct, color)
+        if current_pct < target_pct - 0.3:
+            self.after(16, lambda: self._animate_bar_in(
+                canvas, current_pct, color, target_pct))
 
     def _refresh_quota_bars(self):
         st = _load_quota_state()
         g_pct = min(100, int(st.get("groq_used", 0) * 100 / max(1, _GROQ_DAILY)))
         l_pct = min(100, int(st.get("leonardo_used", 0) * 100 / max(1, _LEONARDO_DAILY)))
-        self._top_groq_var.set(
-            f"• Groq {g_pct}%  ({int(st.get('groq_used', 0)):,} / {_GROQ_DAILY:,})")
-        self._top_leo_var.set(
-            f"• Leo {l_pct}%  ({int(st.get('leonardo_used', 0))} / {_LEONARDO_DAILY})")
-        self._draw_mini_bar(self._top_groq_canvas, g_pct)
-        self._draw_mini_bar(self._top_leo_canvas, l_pct)
+        y_pct = min(100, int(st.get("yt_used", 0) * 100 / max(1, _YT_UNITS_DAILY)))
+        self._top_groq_var.set(f"{g_pct}%")
+        self._top_leo_var.set(f"{l_pct}%")
+        self._top_yt_var.set(f"{y_pct}%")
+        self._draw_mini_bar(self._top_groq_canvas, g_pct, CYAN)
+        self._draw_mini_bar(self._top_leo_canvas,  l_pct, YELLOW_N)
+        self._draw_mini_bar(self._top_yt_canvas,   y_pct, FG3)
         if hasattr(self, "_quota_groq_canvas"):
             self._draw_quota_block(
                 self._quota_groq_canvas, st.get("groq_used", 0), _GROQ_DAILY, ACCENT)
@@ -959,10 +1030,10 @@ class RAGAIApp(tk.Tk):
             rem = max(0, (_GROQ_DAILY - int(st.get("groq_used", 0))) // _GROQ_EST_PER_VIDEO)
             self._quota_footer_var.set(f"~{rem} video(s) remaining today (Groq estimate)")
 
-    def _draw_mini_bar(self, canvas: tk.Canvas, pct: int):
-        w = int(canvas.cget("width") or 120)
-        h = 10
-        _canvas_pill_bar(canvas, 0, 0, w, h, float(pct), ACCENT, BG3)
+    def _draw_mini_bar(self, canvas: tk.Canvas, pct: int, color: str = ACCENT):
+        w = int(canvas.cget("width") or 110)
+        h = 8
+        _canvas_pill_bar(canvas, 0, 0, w, h, float(pct), color, BG3)
 
     def _draw_quota_block(self, canvas: tk.Canvas, used: int, limit: int, color: str):
         w = int(canvas.cget("width") or 340)
