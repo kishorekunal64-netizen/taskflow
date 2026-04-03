@@ -465,9 +465,13 @@ class VideoAssembler:
     # Music selection
     # ------------------------------------------------------------------
 
-    def _select_music(self, style: VisualStyle, topic: str, custom_path: Optional[str] = None) -> Tuple[Optional[Path], str]:
+    def _select_music(self, style: VisualStyle, topic: str,
+                      custom_path: Optional[str] = None,
+                      bgm_mode: str = "auto",
+                      video_duration: float = 60.0) -> Tuple[Optional[Path], str]:
         selector = MusicSelector(self.music_dir)
-        return selector.select(topic, style, custom_path)
+        return selector.select(topic, style, custom_path,
+                               bgm_mode=bgm_mode, duration=video_duration)
 
     def _mix_music(
         self,
@@ -599,8 +603,15 @@ class VideoAssembler:
         logger.info("Concatenating %d clips with xfade", len(clip_paths))
         concat_path = self._concat_clips(clip_paths, preset, crf)
 
+        # Probe actual video duration for music looping
+        video_duration = _probe_duration(concat_path) or 60.0
+        bgm_mode = getattr(config, "bgm_mode", "auto")
+
         music_path, music_reason = self._select_music(
-            style, config.topic, getattr(config, "custom_music_path", None)
+            style, config.topic,
+            getattr(config, "custom_music_path", None),
+            bgm_mode=bgm_mode,
+            video_duration=video_duration,
         )
         logger.info("BGM: %s", music_reason)
         output_path = self._mix_music(

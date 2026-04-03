@@ -14,5 +14,7 @@
   "enable_character_anchor": true,
   "enable_location_anchor": true,
   "enable_character_reference_system": true,
-  "enable_reference_conditioning": true
+  "enable_reference_conditioning": true,
+  "enable_procedural_bgm": true,
+  "bgm_default_duration": 60
 }

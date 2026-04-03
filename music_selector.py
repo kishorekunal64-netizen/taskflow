@@ -1,14 +1,12 @@
 """
 music_selector.py — Smart BGM selection for RAGAI Video Factory.
 
-Scores all available music tracks against the story topic and visual style
-using a keyword-mood matrix, then returns the best-matching track path.
-
 Priority order:
   1. User-supplied custom_music_path (if set and file exists)
-  2. Topic keyword scoring across all available tracks
-  3. Style-based fallback (STYLE_MUSIC_MAP)
-  4. neutral.mp3 as last resort
+  2. Procedural BGM (procedural_bgm_engine.generate_bgm) — copyright-free
+  3. Topic keyword scoring across all available tracks in music/
+  4. Style-based fallback (STYLE_MUSIC_MAP)
+  5. neutral.mp3 as last resort
 """
 
 from __future__ import annotations
@@ -92,6 +90,8 @@ class MusicSelector:
         topic: str,
         style: VisualStyle,
         custom_path: Optional[str] = None,
+        bgm_mode: str = "auto",
+        duration: float = 60.0,
     ) -> Tuple[Optional[Path], str]:
         """Return (music_path, reason_string).
 
@@ -99,24 +99,40 @@ class MusicSelector:
             topic: The video topic / story description.
             style: The resolved VisualStyle (not AUTO).
             custom_path: User-supplied override path (optional).
+            bgm_mode: "auto" | "procedural" | "custom" | "off"
+            duration: Target BGM duration in seconds (for procedural).
 
         Returns:
             Tuple of (Path or None, human-readable reason).
         """
-        # 1. User override
-        if custom_path:
-            p = Path(custom_path)
-            if p.exists() and p.is_file():
-                logger.info("BGM: using custom file %s", p)
-                return p, f"Custom: {p.name}"
-            else:
-                logger.warning("BGM: custom path not found: %s — falling back to auto", custom_path)
+        # 0. Off
+        if bgm_mode == "off":
+            return None, "BGM disabled"
 
-        # 2. Score all available tracks against topic keywords
+        # 1. User override / custom mode
+        if custom_path or bgm_mode == "custom":
+            if custom_path:
+                p = Path(custom_path)
+                if p.exists() and p.is_file():
+                    logger.info("BGM: using custom file %s", p)
+                    return p, f"Custom: {p.name}"
+                else:
+                    logger.warning("BGM: custom path not found: %s — falling back", custom_path)
+
+        # 2. Procedural BGM (auto or procedural mode)
+        if bgm_mode in ("auto", "procedural"):
+            try:
+                from procedural_bgm_engine import generate_bgm
+                bgm_path = generate_bgm(style, duration=duration)
+                if bgm_path and bgm_path.exists():
+                    return bgm_path, f"Procedural: {bgm_path.name}"
+            except Exception as exc:
+                logger.warning("Procedural BGM failed: %s — falling back to music/ folder", exc)
+
+        # 3. Score all available tracks against topic keywords
         scores = self._score_tracks(topic, style)
         logger.info("BGM scores: %s", scores)
 
-        # Pick highest-scoring track that actually exists on disk
         for track_name, score in sorted(scores.items(), key=lambda x: -x[1]):
             p = self.music_dir / track_name
             if p.exists():
@@ -124,13 +140,13 @@ class MusicSelector:
                 logger.info("BGM selected: %s", reason)
                 return p, reason
 
-        # 3. Style fallback
+        # 4. Style fallback
         fallback_name = STYLE_MUSIC_MAP.get(style, "neutral.mp3")
         p = self.music_dir / fallback_name
         if p.exists():
             return p, f"Style fallback: {fallback_name}"
 
-        # 4. neutral.mp3
+        # 5. neutral.mp3
         p = self.music_dir / "neutral.mp3"
         if p.exists():
             return p, "Default: neutral.mp3"

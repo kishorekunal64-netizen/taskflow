@@ -1325,6 +1325,19 @@ class RAGAIApp(tk.Tk):
                 command=lambda v=val: self._select_bgm_genre(v),
             ).pack(side=tk.LEFT, padx=(0, 4))
 
+
+        # ── BGM Mode selector ─────────────────────────────────────────
+        mode_row = tk.Frame(bgm, bg=BG2)
+        mode_row.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(mode_row, text='BGM Mode:', font=FONT_LABEL, fg=FG2, bg=BG2).pack(
+            side=tk.LEFT, padx=(0, 8))
+        self._bgm_mode_var = tk.StringVar(value='Auto Procedural')
+        ttk.Combobox(
+            mode_row, textvariable=self._bgm_mode_var,
+            values=['Auto Procedural', 'Procedural Only', 'Custom File', 'Off'],
+            state='readonly', width=16, font=FONT_SMALL,
+        ).pack(side=tk.LEFT)
+
         bgm_row = tk.Frame(bgm, bg=BG2)
         bgm_row.pack(fill=tk.X)
 
@@ -1833,8 +1846,11 @@ class RAGAIApp(tk.Tk):
         self._bgm_label.config(text=f"Genre → music/{name}", fg=GREEN_N)
 
     def _resolve_bgm_path(self) -> Optional[str]:
-        if self._bgm_path:
+        mode = self._bgm_mode_var.get() if hasattr(self, "_bgm_mode_var") else "Auto Procedural"
+        if mode == "Custom File" and self._bgm_path:
             return self._bgm_path
+        if mode in ("Auto Procedural", "Procedural Only"):
+            return None  # procedural engine handles it
         g = self._bgm_genre_var.get() if hasattr(self, "_bgm_genre_var") else "auto"
         if g == "auto":
             return None
@@ -1844,6 +1860,15 @@ class RAGAIApp(tk.Tk):
             return None
         p = Path("music") / name
         return str(p.resolve()) if p.exists() else None
+
+    def _get_bgm_mode(self) -> str:
+        mode = self._bgm_mode_var.get() if hasattr(self, "_bgm_mode_var") else "Auto Procedural"
+        return {
+            "Auto Procedural": "auto",
+            "Procedural Only": "procedural",
+            "Custom File":     "custom",
+            "Off":             "off",
+        }.get(mode, "auto")
 
     def _refresh_recent_videos(self):
         if not hasattr(self, "_recent_inner"):
@@ -1964,6 +1989,7 @@ class RAGAIApp(tk.Tk):
             quality=QualityPreset(self._quality_var.get()),
             target_duration_minutes=self._duration_var.get(),
             custom_music_path=self._resolve_bgm_path(),
+            bgm_mode=self._get_bgm_mode(),
             hf_token=self.app_config.hf_token,
             trend_context=self._get_trend_context(),
         )

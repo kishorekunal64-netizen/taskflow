@@ -167,6 +167,7 @@ class PipelineConfig:
     quality: QualityPreset = QualityPreset.CINEMA
     target_duration_minutes: float = 0.0  # 0 = let LLM decide; >0 = target total length
     custom_music_path: Optional[str] = None  # override auto BGM selection
+    bgm_mode: str = "auto"                   # "auto" | "procedural" | "custom" | "off"
     hf_token: str = ""  # optional HuggingFace token for FLUX.1-schnell fallback
     trend_context: str = ""  # viral trend angles injected into story prompt
 
