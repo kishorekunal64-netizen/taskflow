@@ -278,7 +278,6 @@ class _PremiumHeader(tk.Frame):
         self._tagline_lbl = tk.Label(
             stack, text="AI VIDEO FACTORY · CINEMATIC 4K",
             font=("Segoe UI", 9, "bold"), fg=FG_MUTED, bg=BG_HEADER,
-            letterSpacing=2 if hasattr(tk.Label, "letterSpacing") else 0,
         )
         self._tagline_lbl.pack(anchor="w", pady=(1, 0))
 
