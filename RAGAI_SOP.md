@@ -1,6 +1,6 @@
 # RAGAI Video Factory — Standard Operating Procedure (SOP)
 
-> Version: 7.4 | Platform: Windows 10/11 | Last Updated: March 2026 | Author: Kunal
+> Version: 8.0 | Platform: Windows 10/11 | Last Updated: April 2026 | Author: Kunal
 >
 > Book & Story → Cinematic Hindi/English Video → YouTube
 
@@ -14,7 +14,7 @@
 4. [API Key Registration](#4-api-key-registration)
 5. [Project Setup](#5-project-setup)
 6. [Running the App](#6-running-the-app)
-7. [Making a Video — Step by Step](#7-making-a-video--step-by-step)
+7. [Making a Video — Step by Step (Operational Guide)](#7-making-a-video--step-by-step-operational-guide)
 8. [Input Modes](#8-input-modes)
 9. [Visual Styles Guide](#9-visual-styles-guide)
 10. [Quality Presets Reference](#10-quality-presets-reference)
@@ -22,35 +22,38 @@
 12. [Intel QSV Hardware Encoding](#12-intel-qsv-hardware-encoding)
 13. [Scene Re-Generate (Scenes Tab)](#13-scene-re-generate-scenes-tab)
 14. [Voice Settings](#14-voice-settings)
-15. [Groq Rate Limits & Solutions](#15-groq-rate-limits--solutions)
-16. [API Costs & Free Limits](#16-api-costs--free-limits)
-17. [Pipeline Overview](#17-pipeline-overview)
-18. [Project Structure Reference](#18-project-structure-reference)
-19. [Configuration Reference](#19-configuration-reference)
-20. [YouTube Upload Workflow](#20-youtube-upload-workflow)
-21. [YouTube Monetization Requirements](#21-youtube-monetization-requirements)
-22. [Troubleshooting Guide](#22-troubleshooting-guide)
-23. [Quick Rebuild Checklist](#23-quick-rebuild-checklist)
-24. [Before Next Laptop Rebuild — Backup Checklist](#24-before-next-laptop-rebuild--backup-checklist)
-25. [Pending Items & Future Upgrades](#25-pending-items--future-upgrades)
-26. [Quick Reference Commands](#26-quick-reference-commands)
-27. [RAGAI Editor V2](#27-ragai-editor-v2)
-28. [RAGAI Editor V2 — Module Reference](#28-ragai-editor-v2--module-reference)
-29. [Global Config — ragai_config.json](#29-global-config--ragai_configjson)
-30. [Job Manager & Crash Recovery System](#30-job-manager--crash-recovery-system)
-31. [Scheduler — Automated Topic Queue](#31-scheduler--automated-topic-queue)
-32. [Complete Project Structure Reference (v6.0 + Editor V2)](#32-complete-project-structure-reference-v60--editor-v2)
-33. [Rebuild on New System — Complete Checklist](#33-rebuild-on-new-system--complete-checklist)
-34. [How to Ask Kiro to Rebuild RAGAI on a New System](#34-how-to-ask-kiro-to-rebuild-ragai-on-a-new-system)
-35. [Content Intelligence Layer (v7.0)](#35-content-intelligence-layer-v70)
-36. [Thumbnail A/B Testing](#36-thumbnail-ab-testing)
-37. [Performance Layer](#37-performance-layer)
-38. [Intelligence Layer (v7.1)](#38-intelligence-layer-v71)
-39. [Flexible Input Modes (v7.2)](#39-flexible-input-modes-v72)
-40. [Cinematic Prompt Engine (v7.3)](#40-cinematic-prompt-engine-v73)
-41. [Character Reference System (v7.4)](#41-character-reference-system-v74)
-42. [Advanced Configuration Reference](#42-advanced-configuration-reference--ragai_advanced_configjson)
-43. [Complete Project Structure Reference (v7.4)](#43-complete-project-structure-reference-v74)
+15. [Background Music System](#15-background-music-system)
+16. [Image Quality & Ken Burns System](#16-image-quality--ken-burns-system)
+17. [Groq Rate Limits & Solutions](#17-groq-rate-limits--solutions)
+18. [API Costs & Free Limits](#18-api-costs--free-limits)
+19. [Pipeline Overview](#19-pipeline-overview)
+20. [Project Structure Reference](#20-project-structure-reference)
+21. [Configuration Reference](#21-configuration-reference)
+22. [YouTube Upload Workflow](#22-youtube-upload-workflow)
+23. [YouTube Monetization Requirements](#23-youtube-monetization-requirements)
+24. [Troubleshooting Guide](#24-troubleshooting-guide)
+25. [Quick Rebuild Checklist](#25-quick-rebuild-checklist)
+26. [Before Next Laptop Rebuild — Backup Checklist](#26-before-next-laptop-rebuild--backup-checklist)
+27. [Pending Items & Future Upgrades](#27-pending-items--future-upgrades)
+28. [Quick Reference Commands](#28-quick-reference-commands)
+29. [RAGAI Editor V2](#29-ragai-editor-v2)
+30. [RAGAI Editor V2 — Module Reference](#30-ragai-editor-v2--module-reference)
+31. [Global Config — ragai_config.json](#31-global-config--ragai_configjson)
+32. [Job Manager & Crash Recovery System](#32-job-manager--crash-recovery-system)
+33. [Scheduler — Automated Topic Queue](#33-scheduler--automated-topic-queue)
+34. [Complete Project Structure Reference (v7.4)](#34-complete-project-structure-reference-v74)
+35. [Rebuild on New System — Complete Checklist](#35-rebuild-on-new-system--complete-checklist)
+36. [How to Ask Kiro to Rebuild RAGAI on a New System](#36-how-to-ask-kiro-to-rebuild-ragai-on-a-new-system)
+37. [Content Intelligence Layer (v7.0)](#37-content-intelligence-layer-v70)
+38. [Thumbnail A/B Testing](#38-thumbnail-ab-testing)
+39. [Performance Layer](#39-performance-layer)
+40. [Intelligence Layer (v7.1)](#40-intelligence-layer-v71)
+41. [Flexible Input Modes (v7.2)](#41-flexible-input-modes-v72)
+42. [Cinematic Prompt Engine (v7.3)](#42-cinematic-prompt-engine-v73)
+43. [Character Reference System (v7.4)](#43-character-reference-system-v74)
+44. [Advanced Configuration Reference](#44-advanced-configuration-reference--ragai_advanced_configjson)
+45. [Complete Project Structure Reference (v8.0)](#45-complete-project-structure-reference-v80)
+46. [v8.0 Bug Fixes & Technical Changes](#46-v80-bug-fixes--technical-changes)
 
 ---
 
@@ -58,7 +61,7 @@
 
 RAGAI is a fully automated AI video factory. You type a story topic, choose a language, and RAGAI creates a complete cinematic video with AI images, voiceover, smooth Ken Burns animations, and background music — ready for YouTube.
 
-### Architecture (v6.0)
+### Architecture (v8.0)
 
 | Component | Technology |
 |-----------|-----------|
@@ -70,24 +73,18 @@ RAGAI is a fully automated AI video factory. You type a story topic, choose a la
 | AI Images — Fallback 3 | OpenVINO local — Intel Arc GPU, fully offline |
 | Voice (Natural) | Edge-TTS — hi-IN-SwaraNeural (needs internet) |
 | Voice (Fallback) | gTTS — consistent, works on any network |
-| Video Encoding | FFmpeg — H.264, Intel QSV hardware or libx264 software |
-| Animation | PIL frames + FFmpeg, 24fps cinematic Ken Burns |
-| Music | 7 tracks in RAGAI/music/ — auto-selected by style |
+| Video Encoding | FFmpeg 8.x — H.264, Intel QSV hardware or libx264 software |
+| Animation | PIL frames + FFmpeg, 24fps cinematic Ken Burns (contain+blur bg) |
+| Music | 7 tracks in music/ — auto-selected by style, stereo 44.1kHz mix |
 | Output | Up to 4K UHD (3840×2160) landscape / Shorts (2160×3840) |
 
-### NEW in v6.0 vs v5.0
+### What's New in v8.0
 
-- **Intel QSV hardware encoding** — 5–10x faster encode on Intel Arc 140V GPU
-- **4 image providers** with automatic fallback chain (Leonardo → Pollinations → HuggingFace → OpenVINO)
-- **OpenVINO local provider** — generate images offline on Intel Arc GPU, zero API cost
-- **4 quality presets** — Draft 720p / Standard 1080p / High 1440p / Cinema 4K
-- **4 input modes** — Topic / Script / Audio transcription / Image upload
-- **Scene Re-Generate tab** — swap any scene's image after a run without re-running everything
-- **Video length control** — set target duration (1–10 min) or let AI decide
-- **Custom BGM** — browse and use your own background music file
-- **Scene count selector** — choose 5, 8, 10, 12, or 15 scenes
-- **Modular codebase** — split into 12 focused Python modules (was single ragai.py)
-- **Animated GUI header** — baby-face cards for Radha & Gauri with bobbing animation
+- **BGM audio fix** — background music now audible at proper volume (stereo 44.1kHz, loudnorm -16 LUFS)
+- **Image distortion fix** — Ken Burns uses contain+blur-background, no squish or crop of portrait images
+- **Aspect ratio fix** — crop always matches output ratio exactly, no stretch distortion
+- **colorbalance fix** — FFmpeg 8.x compatible parameter names (rs/gs/bs instead of ss/sm/sh)
+- **Safe pan zones** — Ken Burns pan stays within image content, never pans into blurred background
 
 ---
 
@@ -101,6 +98,7 @@ RAGAI is a fully automated AI video factory. You type a story topic, choose a la
 | CPU | 4-core | Intel Core Ultra (Arc GPU for QSV) |
 | GPU | Any | Intel Arc 140V+ (QSV encoding + OpenVINO) |
 | Internet | Required | Required (Groq + Leonardo APIs) |
+| FFmpeg | 8.x required | 8.1-essentials from gyan.dev |
 
 > Tested on: Acer Swift AI SF14-51, Intel Core Ultra 226V/258V, Intel Arc 140V, 16GB LPDDR5X, Windows 11
 
@@ -111,17 +109,9 @@ RAGAI is a fully automated AI video factory. You type a story topic, choose a la
 ### 3.1 Python 3.11 or 3.12
 
 1. Download from: https://www.python.org/downloads/
-   - Choose: **Windows installer (64-bit)**
-2. Run the installer
-   - ✅ Check **"Add Python to PATH"** before clicking Install
-3. Verify:
-   ```cmd
-   python --version
-   ```
-4. Upgrade pip:
-   ```cmd
-   python -m pip install --upgrade pip
-   ```
+2. Run installer — ✅ Check **"Add Python to PATH"**
+3. Verify: `python --version`
+4. Upgrade pip: `python -m pip install --upgrade pip`
 
 ### 3.2 Git
 
@@ -129,25 +119,21 @@ RAGAI is a fully automated AI video factory. You type a story topic, choose a la
 2. Run installer with default settings
 3. Verify: `git --version`
 
-### 3.3 FFmpeg 8.x
+### 3.3 FFmpeg 8.x (REQUIRED — must be 8.x)
 
-FFmpeg is the video encoding engine. RAGAI requires FFmpeg 8.x on the system PATH.
+FFmpeg is the video encoding engine. RAGAI requires FFmpeg **8.x** specifically — older versions have different colorbalance filter parameter names.
 
 1. Download from: https://www.gyan.dev/ffmpeg/builds/
    - Choose: **ffmpeg-release-essentials.zip** (latest 8.x build)
 2. Extract to: `C:\ffmpeg\`
-3. Add to System PATH:
-   - Win + S → "Environment Variables" → System variables → Path → New → `C:\ffmpeg\bin`
+3. Add to System PATH: Win + S → "Environment Variables" → System variables → Path → New → `C:\ffmpeg\bin`
 4. Open a **new** Command Prompt and verify:
    ```cmd
    ffmpeg -version
    ```
+   Output should show: `ffmpeg version 8.x`
 
-> The project ships with `ffmpeg-8.1-essentials_build/` locally. You can also add that to PATH:
-> ```cmd
-> set PATH=%PATH%;C:\path\to\ragai\ffmpeg-8.1-essentials_build\bin
-> ```
-> Note: the local ffmpeg folder is excluded from Git (too large). Re-download if rebuilding.
+> IMPORTANT: FFmpeg 7.x or older will cause colorbalance filter errors. Always use 8.x from gyan.dev.
 
 ### 3.4 VS Code + Extensions (Recommended)
 
@@ -171,10 +157,7 @@ Groq powers **story generation** (LLaMA 3) and **audio transcription** (Whisper)
 2. Sign up / Log in → **API Keys** → **Create API Key**
 3. Copy the key — starts with `gsk_...`
 
-Free tier limits:
-- 30 requests/minute
-- 6,000 tokens/minute
-- 500,000 tokens/day (~8–10 videos/day)
+Free tier: 30 req/min, 6,000 tokens/min, 500,000 tokens/day (~8–10 videos/day)
 
 ### 4.2 Leonardo AI API Key
 
@@ -185,52 +168,22 @@ Leonardo AI generates the scene images (primary provider).
 3. Copy the key (UUID format)
 
 Free tier: ~150 tokens/day (~1–2 videos/day).
-Image resolution used: **1344×768** (landscape) / **768×1344** (shorts) — within Leonardo's 32–1536px safe range.
 
 ### 4.3 HuggingFace Token (Optional — for Fallback 2)
-
-Only needed if you want HuggingFace FLUX.1-schnell as a fallback when Leonardo is exhausted.
 
 1. Go to: https://huggingface.co/settings/tokens
 2. Create a token with **read** access
 3. Add to `.env` as `HF_TOKEN=hf_...`
 
-> Without this token, HuggingFace still works but at lower rate limits.
-
 ---
 
 ## 5. Project Setup
 
-### 5.1 Clone / Copy the Project
+### 5.1 Clone the Project
 
 ```cmd
 git clone https://github.com/kishorekunal64-netizen/taskflow.git ragai
 cd ragai
-```
-
-The project root should look like:
-```
-ragai/
-├── ragai.py              ← entry point
-├── config.py
-├── models.py
-├── pipeline.py
-├── gui.py
-├── story_generator.py
-├── image_generator.py
-├── voice_synthesizer.py
-├── video_assembler.py
-├── style_detector.py
-├── audio_transcriber.py
-├── image_importer.py
-├── music_selector.py
-├── log_setup.py
-├── ragai_diagnose.py
-├── requirements.txt
-├── START_RAGAI.bat
-├── .env              ← you create this
-├── music/            ← 7 background music tracks
-└── output/           ← generated videos saved here
 ```
 
 ### 5.2 Create Virtual Environment
@@ -240,50 +193,25 @@ python -m venv venv
 venv\Scripts\activate
 ```
 
-Your prompt shows `(venv)` when active. To deactivate: `deactivate`
-
 ### 5.3 Install Python Dependencies
 
 ```cmd
 pip install -r requirements.txt
 ```
 
-| Package | Min Version | Purpose |
-|---------|-------------|---------|
-| `groq` | 0.9.0 | Groq LLM + Whisper API |
-| `python-dotenv` | 1.0.0 | Load .env config |
-| `requests` | 2.31.0 | HTTP calls to Leonardo / Pollinations |
-| `Pillow` | 10.0.0 | Image processing / thumbnails |
-| `opencv-python` | 4.9.0 | Frame operations |
-| `numpy` | 1.26.0 | Array operations for video frames |
-| `edge-tts` | 6.1.9 | Microsoft Edge TTS (primary voice) |
-| `gTTS` | 2.5.0 | Google TTS (fallback voice) |
-| `pydub` | 0.25.1 | Audio file manipulation |
-
-**Optional — OpenVINO local image generation (Intel Arc GPU):**
-```cmd
-pip install "optimum[openvino]" diffusers accelerate
-```
-Only needed if you want fully offline image generation. Model downloads ~1.5GB on first use.
-
 ### 5.4 Configure .env File
 
 Create `.env` in the project root:
 
 ```env
-# Required
 GROQ_API_KEY=gsk_your_groq_key_here
 LEONARDO_API_KEY=your_leonardo_uuid_key_here
-
-# Optional
-HF_TOKEN=hf_your_huggingface_token      # enables HF FLUX fallback
-USE_EDGE_TTS=true                        # false = use gTTS
+HF_TOKEN=hf_your_huggingface_token
+USE_EDGE_TTS=true
 DEFAULT_LANGUAGE=hi
 DEFAULT_FORMAT=landscape
 LOG_LEVEL=INFO
 ```
-
-> Never commit `.env` to Git — it is already in `.gitignore`.
 
 ---
 
@@ -291,9 +219,8 @@ LOG_LEVEL=INFO
 
 ### 6.1 GUI Mode (Recommended)
 
-**Option A — Double-click launcher (easiest):**
-
-Double-click `START_RAGAI.bat` in the project folder. It activates the venv and launches the GUI.
+**Option A — Double-click launcher:**
+Double-click `START_RAGAI.bat` in the project folder.
 
 **Option B — Manual launch:**
 ```cmd
@@ -324,24 +251,6 @@ python ragai.py --cli --audio-file recording.mp3 --language hi
 python ragai.py --cli --image-files "img1.jpg,img2.jpg" --image-context "A family trip to the mountains"
 ```
 
-**All CLI flags:**
-
-| Flag | Values | Default | Description |
-|------|--------|---------|-------------|
-| `--topic` | any text | — | Video topic |
-| `--script-file` | file path | — | Pre-written script |
-| `--audio-file` | file path | — | Audio for transcription mode |
-| `--image-files` | comma-separated paths | — | Images for image mode |
-| `--image-context` | text | "" | Context hint for image mode |
-| `--audience` | family/children/adults/devotees | family | Target audience |
-| `--language` | hi/ta/te/bn/gu/mr/kn/ml/pa/ur | hi | Narration language |
-| `--style` | AUTO/DYNAMIC_EPIC/MYSTERY_DARK/SPIRITUAL_DEVOTIONAL/PEACEFUL_NATURE/ROMANTIC_DRAMA/ADVENTURE_ACTION | AUTO | Visual style |
-| `--format` | landscape/shorts | landscape | Video format |
-| `--quality` | draft/standard/high/cinema | cinema | Output quality preset |
-| `--scenes` | 5/8/10/12/15 | 8 | Number of scenes |
-| `--duration` | 0.0–10.0 | 0.0 (auto) | Target video length in minutes |
-| `--output-dir` | directory path | ./output | Output directory |
-
 ### 6.3 Diagnostics
 
 ```cmd
@@ -352,27 +261,171 @@ Checks: Python version, all packages, FFmpeg on PATH, .env keys, music/ folder, 
 
 ---
 
-## 7. Making a Video — Step by Step
+## 7. Making a Video — Step by Step (Operational Guide)
 
-| Step | What to Do |
-|------|-----------|
-| 1 — Open app | Double-click `START_RAGAI.bat` |
-| 2 — Story Source | Choose: Topic / Script / Audio / Images |
-| 3 — Topic | Type in English e.g. "A girl from village comes to Mumbai" |
-| 4 — Audience | Select: Family / Children / Adults / Devotees |
-| 5 — Language | Select from dropdown (Hindi, Tamil, Telugu, etc.) |
-| 6 — Visual Style | Select AUTO or pick a specific style |
-| 7 — Scene Count | Choose 5, 8, 10, 12, or 15 scenes |
-| 8 — Video Length | Auto (AI decides) or set 1–10 minutes |
-| 9 — Background Music | Auto-selected, or Browse to use your own file |
-| 10 — Quality | Draft (fast) / Standard / High / Cinema 4K |
-| 11 — Format | Landscape 4K (YouTube) or Shorts 4K (Reels/Shorts) |
-| 12 — Character Names | Optional: "hero=Arjun, heroine=Priya" |
-| 13 — Output Dir | Default: ./output — or Browse to change |
-| 14 — Generate | Click GENERATE VIDEO — watch Live Log tab |
-| 15 — Wait | 5–30 min depending on quality and scene count |
-| 16 — Done | Video + thumbnail + metadata.txt saved in output/ |
-| 17 — Scenes tab | Review scene images, re-generate any you don't like |
+This is the complete user workflow from opening the app to getting a finished video.
+
+### Step 1 — Launch the App
+
+Double-click `START_RAGAI.bat` or run:
+```cmd
+venv\Scripts\activate
+python ragai.py
+```
+
+Wait for the GUI to open (5–10 seconds). The animated header with Radha & Gauri cards will appear.
+
+### Step 2 — Choose Story Source
+
+In the **Settings tab**, select your input mode:
+
+| Mode | When to Use |
+|------|-------------|
+| **Topic** | You have a story idea — AI writes everything |
+| **Script** | You have a pre-written script file (.txt) |
+| **Audio** | You have a recorded narration (.mp3/.wav) |
+| **Images** | You have your own photos/images to use |
+
+### Step 3 — Enter Your Topic (Topic Mode)
+
+Type your topic in English in the Topic field. Examples:
+- `A poor farmer who saves his village from drought`
+- `A girl from Hapur who becomes an IAS officer`
+- `Radha doing pooja in Shiva temple`
+- `A soldier fighting to protect his family`
+
+> Tip: Include location names (Delhi, Mumbai, village) and emotion words for better stories.
+
+### Step 4 — Select Audience
+
+Choose who the video is for:
+- **Family** — suitable for all ages (recommended for most topics)
+- **Children** — simpler language, gentle themes
+- **Adults** — mature themes, complex stories
+- **Devotees** — religious/spiritual content
+
+### Step 5 — Select Language
+
+Choose the narration language from the dropdown:
+- **Hindi (hi)** — most popular for Indian YouTube
+- **English (en)** — for international audience
+- **Tamil, Telugu, Bengali, Gujarati, Marathi, Kannada, Malayalam, Punjabi, Urdu**
+
+### Step 6 — Select Visual Style
+
+| Style | Best For |
+|-------|---------|
+| **AUTO** | Let RAGAI detect from topic (recommended) |
+| Dynamic Epic | Mythology, history, war, kingdom stories |
+| Mystery Dark | Thriller, detective, horror, crime |
+| Spiritual Devotional | Religious, bhajan, temple, devotional |
+| Peaceful Nature | Children stories, nature, village, calm |
+| Romantic Drama | Love stories, family drama, emotional |
+| Adventure Action | Action, fantasy, journey, quest |
+
+### Step 7 — Set Scene Count
+
+Choose how many scenes (images) the video will have:
+- **5 scenes** — ~2–3 min video, fastest generation
+- **8 scenes** — ~4–5 min video (recommended)
+- **10 scenes** — ~5–7 min video
+- **12 scenes** — ~7–9 min video
+- **15 scenes** — ~10–12 min video, slowest
+
+### Step 8 — Set Video Length (Optional)
+
+- Leave at **0 (Auto)** — AI decides the best length
+- Or set **1–10 minutes** to target a specific duration
+
+### Step 9 — Background Music
+
+- **Auto mode** (default) — RAGAI automatically picks the best music track based on your topic and style
+- **Custom music** — click **Browse…** to use your own .mp3 file
+- **Clear** — removes custom music, returns to auto
+
+> The 7 built-in tracks: epic, mystery, devotional, nature, romantic, adventure, neutral
+> Music is mixed at proper volume — voice is clear, music is audible in background.
+
+### Step 10 — Select Quality Preset
+
+| Preset | Resolution | Speed | Use For |
+|--------|-----------|-------|---------|
+| **Draft** | 720p | Fastest | Quick preview |
+| **Standard** | 1080p | Fast | Social media |
+| **High** | 1440p | Medium | YouTube |
+| **Cinema** | 4K UHD | Slow | Best quality |
+
+> With Intel QSV (Arc GPU): Cinema 4K takes ~3 min. Without QSV: ~25 min.
+
+### Step 11 — Select Format
+
+- **Landscape** — 16:9 widescreen (YouTube standard)
+- **Shorts** — 9:16 portrait (YouTube Shorts, Instagram Reels)
+
+### Step 12 — Character Names (Optional)
+
+If your story has named characters, enter them:
+```
+hero=Arjun, heroine=Priya, villain=Rajan
+```
+This helps the AI use consistent names throughout the story.
+
+### Step 13 — Output Directory
+
+Default is `./output` — leave as-is or click Browse to change.
+
+### Step 14 — Click GENERATE VIDEO
+
+Click the **GENERATE VIDEO** button. The progress bar starts and the **Live Log tab** shows real-time output.
+
+### Step 15 — Monitor Progress
+
+Switch to the **Live Log tab** to watch the pipeline:
+```
+Stage 1: Style detection...
+Stage 2: Story generation...
+Stage 3: Image generation (scene 1/8)...
+Stage 4: Voice synthesis (scene 1/8)...
+Stage 5: Video assembly...
+BGM: Auto-matched: epic.mp3 (score 2.0)
+Final video (QSV, 20000k): output\video_20260403_...\video.mp4
+Pipeline complete in 487.23s
+```
+
+### Step 16 — Wait for Completion
+
+Typical times (Cinema 4K, 8 scenes):
+- With Intel QSV: **8–10 minutes**
+- Without QSV (software): **20–30 minutes**
+- Draft 720p: **2–4 minutes**
+
+### Step 17 — Review Output
+
+When complete, go to your output folder:
+```
+output/
+└── video_20260403_HHMMSS/
+    ├── video.mp4        ← your finished video
+    ├── thumbnail.jpg    ← auto-generated thumbnail
+    └── metadata.txt     ← title, description, hashtags for YouTube
+```
+
+### Step 18 — Review Scene Images (Optional)
+
+Click the **Scenes tab** to see all scene images. If any image looks wrong:
+1. Click **Re-generate Image** on that scene card
+2. A new image is generated and the clip is re-encoded
+3. No need to re-run the full pipeline
+
+### Step 19 — Upload to YouTube
+
+1. Open `metadata.txt` — copy the title, description, and hashtags
+2. Go to studio.youtube.com → Upload
+3. Select `video.mp4`
+4. Paste title and description
+5. Upload `thumbnail.jpg` as custom thumbnail
+6. Schedule for 7–9 PM IST for best reach
+7. Publish
 
 ---
 
@@ -385,19 +438,27 @@ Checks: Python version, all packages, FFmpeg on PATH, .env keys, music/ folder, 
 | **Audio** | Browse to an .mp3/.wav file → Groq Whisper transcribes it | Recorded narrations, interviews |
 | **Images** | Browse to select your own images → AI writes story around them | When you have specific visuals |
 
+### Using Image Mode with Portrait Photos
+
+When you upload portrait photos (phone camera photos, tall images):
+- RAGAI preserves the full image — no cropping, no squishing
+- The image is centered with a blurred background filling the sides (cinematic look)
+- Ken Burns zoom stays within the image content area
+- The person/subject is always fully visible
+
 ---
 
 ## 9. Visual Styles Guide
 
-| Style | Best For | Color Grade |
-|-------|---------|-------------|
-| AUTO | Let RAGAI detect from topic keywords (recommended) | Varies |
-| Dynamic Epic | Mythology, history, war stories | High contrast, warm |
-| Mystery Dark | Thriller, detective, horror | Desaturated, cool shadows |
-| Spiritual Devotional | Religious, bhajan, devotional | Warm golden tones |
-| Peaceful Nature | Children stories, nature, calm | Soft greens, bright |
-| Romantic Drama | Love stories, family drama, emotional | Warm pinks, soft |
-| Adventure Action | Action, fantasy, journey stories | Vivid, high saturation |
+| Style | Best For | Color Grade | BGM Track |
+|-------|---------|-------------|-----------|
+| AUTO | Let RAGAI detect from topic keywords | Varies | Auto-matched |
+| Dynamic Epic | Mythology, history, war stories | High contrast, warm orange-teal | epic.mp3 |
+| Mystery Dark | Thriller, detective, horror | Desaturated, cool teal shadows | mystery.mp3 |
+| Spiritual Devotional | Religious, bhajan, devotional | Warm saffron-gold, soft glow | devotional.mp3 |
+| Peaceful Nature | Children stories, nature, calm | Soft greens, airy, bright | nature.mp3 |
+| Romantic Drama | Love stories, family drama | Warm rose-gold, soft contrast | romantic.mp3 |
+| Adventure Action | Action, fantasy, journey | Vivid, punchy, teal-orange | adventure.mp3 |
 
 ---
 
@@ -413,13 +474,11 @@ Checks: Python version, all packages, FFmpeg on PATH, .env keys, music/ folder, 
 > Cinema preset is intentionally slow — 4K H.264 at CRF 16 prioritizes quality over speed.
 > With Intel QSV enabled, Cinema 4K encodes 5–10x faster than software libx264.
 
-**Shorts format** uses the same presets but portrait resolution (e.g. 2160×3840 for Cinema).
-
 ---
 
 ## 11. Image Provider Chain
 
-RAGAI automatically falls through a 4-provider chain. When one provider fails or hits its quota, it switches to the next — no manual action needed.
+RAGAI automatically falls through a 4-provider chain when one fails or hits quota.
 
 | Priority | Provider | Cost | Requires | Quality | Speed |
 |----------|---------|------|---------|---------|-------|
@@ -428,13 +487,6 @@ RAGAI automatically falls through a 4-provider chain. When one provider fails or
 | 3 | **HuggingFace FLUX.1-schnell** | Free | HF token (optional) | Good | ~30–120s/image |
 | 4 | **OpenVINO local** | Free, offline | `optimum[openvino]` installed | Good | ~15s on Arc 140V |
 
-### How fallback works
-
-- Leonardo quota exhausted (429/402) → switches to Pollinations for rest of session
-- Pollinations fails → switches to HuggingFace
-- HuggingFace fails → switches to OpenVINO (if installed)
-- All fail → uses a dark placeholder image (video still completes)
-
 ### Enabling OpenVINO (offline local generation)
 
 ```cmd
@@ -442,33 +494,23 @@ venv\Scripts\activate
 pip install "optimum[openvino]" diffusers accelerate
 ```
 
-First run downloads the model (~1.5GB) to `~/.cache/huggingface/`. Subsequent runs are instant.
-Model used: `OpenVINO/LCM_Dreamshaper_v7-int8-ov` — runs on Intel Arc GPU, falls back to CPU.
+First run downloads the model (~1.5GB). Subsequent runs are instant.
 
 ---
 
 ## 12. Intel QSV Hardware Encoding
 
-RAGAI automatically detects Intel Quick Sync Video (QSV) at startup and uses it for all three encode stages.
+RAGAI automatically detects Intel Quick Sync Video (QSV) at startup.
 
 ### What it does
 
 - Replaces software `libx264` with hardware `h264_qsv` encoder
-- Uses Intel Arc 140V GPU for encoding — frees CPU for other work
-- **5–10x faster** encode speed vs software (Cinema 4K: ~3 min vs ~25 min)
+- **5–10x faster** encode speed vs software
 - Automatic CPU fallback if QSV fails at runtime
-
-### How it works
-
-| Stage | With QSV | Without QSV |
-|-------|---------|------------|
-| Scene clips | `h264_qsv -global_quality 18` | `libx264 -crf 16` |
-| Concat | `h264_qsv -global_quality 18` | `libx264 -crf 16` |
-| Final mix | `h264_qsv -b:v 20000k` | `libx264 -b:v 20000k` |
 
 ### Checking QSV status
 
-QSV detection is logged at startup. Look for in the Live Log:
+Look in the Live Log at startup:
 ```
 Intel QSV detected — hardware encoding enabled (h264_qsv)
 ```
@@ -480,8 +522,8 @@ Intel QSV not available — using software encoding (libx264)
 ### Requirements for QSV
 
 - Intel Arc / Iris Xe / UHD Graphics GPU
-- FFmpeg built with QSV support (the gyan.dev essentials build includes it)
-- Intel Graphics driver up to date (Windows Update or Intel Arc Control)
+- FFmpeg 8.x from gyan.dev (includes QSV support)
+- Intel Graphics driver up to date
 
 ---
 
@@ -497,17 +539,6 @@ After a video is generated, the **Scenes tab** shows all scene images with indiv
 4. Click **Re-generate Image** on that scene card
 5. The image regenerates using the same provider chain
 6. The scene clip is automatically re-encoded with the new image
-7. The thumbnail updates live — no need to re-run the full pipeline
-
-### What it shows per scene
-
-- Scene number
-- First 120 characters of narration text
-- Thumbnail (160×90px preview)
-- Provider used (e.g. "Done via LEONARDO")
-- Re-generate button (disabled during generation)
-
-> Note: Re-generating a scene image also re-encodes that scene's clip automatically. To rebuild the final video with all updated clips, run Generate again after you're happy with all scenes.
 
 ---
 
@@ -517,28 +548,13 @@ After a video is generated, the **Scenes tab** shows all scene images with indiv
 
 | Mode | Quality | Network |
 |------|---------|---------|
-| Edge-TTS (Microsoft Neural) | Natural, human-sounding | Needs internet (may be blocked on some WiFi) |
+| Edge-TTS (Microsoft Neural) | Natural, human-sounding | Needs internet |
 | gTTS (Google) | Consistent but robotic | Works on any network |
 
-Default is Edge-TTS. Set `USE_EDGE_TTS=false` in `.env` to switch to gTTS permanently.
-
-### Switch to Natural Voice (Mobile Hotspot if needed)
-
-Edge-TTS is blocked by some WiFi networks. Use mobile hotspot for best voice:
-
-```cmd
-python -c "content=open('ragai.py',encoding='utf-8').read(); open('ragai.py','w',encoding='utf-8').write(content.replace('USE_EDGE_TTS = False','USE_EDGE_TTS = True')); print('Natural voice ON!')"
-```
-
-Or simply set in `.env`:
+Set in `.env`:
 ```env
-USE_EDGE_TTS=true
-```
-
-### Switch Back to gTTS (Any Network)
-
-```env
-USE_EDGE_TTS=false
+USE_EDGE_TTS=true   # natural voice
+USE_EDGE_TTS=false  # gTTS fallback
 ```
 
 ### Indian Language Voice Map
@@ -546,7 +562,7 @@ USE_EDGE_TTS=false
 | Language | Microsoft Neural Voice |
 |----------|----------------------|
 | Hindi | hi-IN-SwaraNeural |
-| English | en-IN-NeerjaNeural |
+| English | en-US-JennyNeural |
 | Tamil | ta-IN-PallaviNeural |
 | Telugu | te-IN-ShrutiNeural |
 | Bengali | bn-IN-TanishaaNeural |
@@ -559,13 +575,98 @@ USE_EDGE_TTS=false
 
 ---
 
-## 15. Groq Rate Limits & Solutions
+## 15. Background Music System
+
+### How BGM Works (v8.0)
+
+RAGAI automatically selects and mixes background music into every video.
+
+**Selection logic:**
+1. If you set a custom BGM file → uses that file
+2. Scores all 7 tracks against your topic keywords (keyword match scoring)
+3. Adds style bonus (+2 points) for the preferred track of your visual style
+4. Picks the highest-scoring track that exists on disk
+5. Falls back to style default → neutral.mp3 if nothing matches
+
+**Audio mix (v8.0 fixed):**
+- Voice is normalized to -16 LUFS (broadcast standard, clear and loud)
+- Music is set to -8 dB relative to voice (clearly audible background)
+- Both streams resampled to 44.1kHz stereo before mixing
+- `amix normalize=0` preserves set levels (no automatic halving)
+- Output: stereo AAC 320kbps at 44.1kHz — plays on all devices
+
+### BGM Track → Style Mapping
+
+| Track | Style | Topic Keywords |
+|-------|-------|---------------|
+| epic.mp3 | Dynamic Epic | war, battle, warrior, kingdom, mythology, history, hero |
+| mystery.mp3 | Mystery Dark | mystery, thriller, detective, crime, ghost, horror, dark |
+| devotional.mp3 | Spiritual Devotional | god, goddess, temple, prayer, krishna, shiva, bhakti |
+| nature.mp3 | Peaceful Nature | nature, forest, river, village, children, peaceful, calm |
+| romantic.mp3 | Romantic Drama | love, romance, wedding, family, drama, emotional |
+| adventure.mp3 | Adventure Action | adventure, journey, quest, magic, fantasy, action |
+| neutral.mp3 | Fallback | story, life, people, world, documentary |
+
+### Using Custom BGM
+
+1. In the Settings tab, find the **Background Music** section
+2. Click **Browse…** → select any .mp3 file
+3. The label shows your file name in green
+4. Click **✕ Clear** to return to auto mode
+
+### Troubleshooting BGM
+
+| Problem | Solution |
+|---------|---------|
+| No music heard | Check output video is from a run AFTER April 2026 (v8.0 fix) |
+| Music too quiet | This was the old bug — v8.0 fixes it. Re-run the pipeline |
+| Wrong music style | Set style manually instead of AUTO, or use custom BGM |
+| music/ folder empty | Run `python create_music_v2.py` to regenerate tracks |
+
+---
+
+## 16. Image Quality & Ken Burns System
+
+### How Images Are Processed (v8.0)
+
+**Image import (user-supplied images):**
+- Images are saved as-is (original resolution, RGB PNG)
+- No forced resize at import — original quality preserved
+- Ken Burns stage handles all scaling
+
+**Ken Burns processing:**
+1. Image is loaded at original resolution
+2. **Contain scale** — image is scaled to fit entirely within the output frame (no cropping of content)
+3. Blurred version of the image fills letterbox/pillarbox bars (cinematic look)
+4. Canvas is scaled up by 1.12x for Ken Burns zoom headroom
+5. **Safe pan zones** — pan stays within the image content area, never into blurred background
+6. Crop always matches output aspect ratio exactly (no stretch distortion)
+
+### Portrait Photos in Landscape Videos
+
+When you use portrait photos (phone camera, tall images) in landscape format:
+- The full person is visible (head to toe)
+- Blurred background fills the sides
+- Ken Burns zooms into the person, not the background
+- No squishing, no cropping of the subject
+
+### Image Quality Tips
+
+| Tip | Why |
+|-----|-----|
+| Use high-res originals (2MP+) | Better quality after upscaling to 4K |
+| Portrait photos work fine | v8.0 handles them correctly |
+| Landscape photos fill frame | No bars needed |
+| Square photos get side bars | Blurred background fills sides |
+
+---
+
+## 17. Groq Rate Limits & Solutions
 
 | Situation | Solution |
 |-----------|---------|
-| 429 error — daily limit hit | Wait 24 hours for automatic reset (free tier) |
-| Need to keep working now | Switch model: replace `llama-3.3-70b-versatile` with `llama-3.1-8b-instant` |
-| Switch back to best quality | Replace `llama-3.1-8b-instant` with `llama-3.3-70b-versatile` |
+| 429 error — daily limit hit | Wait 24 hours for automatic reset |
+| Need to keep working now | Switch to backup model (see below) |
 | Free daily limit | 500,000 tokens/day — enough for ~8–10 videos |
 
 ### Switch to Backup Model
@@ -580,30 +681,26 @@ python -c "content=open('story_generator.py',encoding='utf-8').read(); content=c
 python -c "content=open('story_generator.py',encoding='utf-8').read(); content=content.replace('llama-3.1-8b-instant','llama-3.3-70b-versatile'); open('story_generator.py','w',encoding='utf-8').write(content); print('Best model ON!')"
 ```
 
-> Note: In v6.0 the model is defined in `story_generator.py`, not `ragai.py`.
-
 ---
 
-## 16. API Costs & Free Limits
+## 18. API Costs & Free Limits
 
 | Service | Cost & Limits |
 |---------|--------------|
 | Groq (Story + Transcription) | FREE — 500K tokens/day, ~8–10 videos/day |
 | Leonardo (Images — primary) | FREE — 150 credits/day (~1–2 videos). Paid $24/month for 80+ videos/day |
 | Pollinations.ai (Images — fallback 1) | FREE — unlimited, no key needed |
-| HuggingFace FLUX (Images — fallback 2) | FREE — rate limited, HF token optional |
-| OpenVINO local (Images — fallback 3) | FREE — offline, Intel Arc GPU, no internet |
+| HuggingFace FLUX (Images — fallback 2) | FREE — rate limited |
+| OpenVINO local (Images — fallback 3) | FREE — offline, Intel Arc GPU |
 | Edge-TTS (Voice) | FREE — Microsoft, unlimited |
 | gTTS (Voice Fallback) | FREE — Google, unlimited |
-| FFmpeg (Video) | FREE — open source, unlimited |
+| FFmpeg (Video) | FREE — open source |
 | **Total for 1–2 videos/day** | **$0/month** |
 | **Total for 40 videos/day** | **~$24/month** (Leonardo paid only) |
 
 ---
 
-## 17. Pipeline Overview
-
-RAGAI runs a 5-stage pipeline for every video:
+## 19. Pipeline Overview
 
 ```
 [Input] ──► Stage 1: Style Detection
@@ -613,21 +710,22 @@ RAGAI runs a 5-stage pipeline for every video:
               │  or: Script parsing / Audio transcription (Groq Whisper)
               ▼
            Stage 3: Image Generation (Leonardo → Pollinations → HF → OpenVINO)
-              │  or: User image import + resize
+              │  or: User image import (original quality preserved)
               ▼
            Stage 4: Voice Synthesis (Edge-TTS / gTTS)
               │  or: Audio file splitting (for audio input mode)
               ▼
            Stage 5: Video Assembly (FFmpeg)
-              │  • Ken Burns motion (24fps, quintic ease, 8 pan directions)
+              │  • Contain+blur Ken Burns (portrait-safe, no distortion)
+              │  • Safe pan zones (stays within image content)
               │  • Film grain (intensity 6)
               │  • Letterbox (2.39:1 anamorphic on landscape)
-              │  • Color grading per style
+              │  • Color grading per style (FFmpeg 8.x compatible)
               │  • Cross-dissolve transitions (0.8s xfade)
-              │  • Background music mix (fade in/out)
+              │  • BGM mix: loudnorm -16 LUFS voice + -8dB music, 44.1kHz stereo
               │  • H.264 encode (QSV or libx264)
               ▼
-           [Output: .mp4 + thumbnail.jpg + metadata.txt]
+           [Output: video.mp4 + thumbnail.jpg + metadata.txt]
 ```
 
 ### Stage Timing (Cinema 4K, 8 scenes, Intel Arc 140V)
@@ -636,313 +734,211 @@ RAGAI runs a 5-stage pipeline for every video:
 |-------|------|-------|
 | Story | ~30s | Groq LLaMA 3.3 70B |
 | Images | ~4 min | Leonardo AI (30s/image × 8) |
-| Voice | ~1 min | Edge-TTS parallel synthesis |
+| Voice | ~1 min | Edge-TTS |
 | Assembly | ~3 min | QSV hardware encode |
 | **Total** | **~8–9 min** | With QSV. Software: ~25 min |
 
 ---
 
-## 18. Project Structure Reference
+## 20. Project Structure Reference
 
 ```
 ragai/
-│
 ├── ragai.py              Entry point — GUI/CLI dispatch
 ├── config.py             .env loading and AppConfig dataclass
 ├── models.py             All enums, dataclasses, constants, exceptions
-├── pipeline.py           5-stage pipeline orchestrator + scene re-generate API
-│
+├── pipeline.py           5-stage pipeline orchestrator
 ├── story_generator.py    Stage 2 — Groq LLaMA story/scene generation
-├── image_generator.py    Stage 3 — 4-provider chain (Leonardo/Pollinations/HF/OpenVINO)
+├── image_generator.py    Stage 3 — 4-provider chain
 ├── voice_synthesizer.py  Stage 4 — Edge-TTS / gTTS voice synthesis
-├── video_assembler.py    Stage 5 — FFmpeg Ken Burns + QSV encode
-│
-├── style_detector.py     Auto-detect visual style from topic keywords
+├── video_assembler.py    Stage 5 — FFmpeg Ken Burns + QSV encode (v8.0)
+├── style_detector.py     Auto-detect visual style (FFmpeg 8.x colorbalance)
 ├── audio_transcriber.py  Groq Whisper transcription + audio splitting
-├── image_importer.py     User image loading, validation, resize
+├── image_importer.py     User image loading (original quality, no forced resize)
 ├── music_selector.py     BGM selection by style + keyword scoring
 ├── log_setup.py          Logging configuration
 ├── gui.py                Tkinter GUI — animated header, 3 tabs, dark theme
 ├── ragai_diagnose.py     Diagnostics runner
-├── create_music_v2.py    One-time music track generator (run once after fresh install)
-│
+├── create_music_v2.py    One-time music track generator
 ├── START_RAGAI.bat       Windows one-click launcher
 ├── requirements.txt      Python dependencies
 ├── .env                  API keys and config (not committed)
-│
-├── music/                Background music per style
-│   ├── adventure.mp3
-│   ├── devotional.mp3
-│   ├── epic.mp3
-│   ├── mystery.mp3
-│   ├── nature.mp3
-│   ├── neutral.mp3
-│   └── romantic.mp3
-│
-├── output/               Generated videos, thumbnails, metadata
+├── music/                7 background music tracks
+├── output/               Generated videos (folder-per-video structure)
 ├── tmp/                  Temporary working files (auto-cleaned)
-├── logs/                 Application logs (ragai_YYYYMMDD_HHMMSS.log)
-└── venv/                 Virtual environment (not committed)
+└── logs/                 Application logs
 ```
 
 ---
 
-## 19. Configuration Reference
+## 21. Configuration Reference
 
 ### .env Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GROQ_API_KEY` | ✅ Yes | — | Groq API key (story + transcription) |
-| `LEONARDO_API_KEY` | ✅ Yes | — | Leonardo AI key (image generation) |
-| `HF_TOKEN` | No | "" | HuggingFace token (enables FLUX fallback) |
-| `USE_EDGE_TTS` | No | `true` | Use Edge-TTS; `false` = gTTS fallback |
+| `GROQ_API_KEY` | Yes | — | Groq API key |
+| `LEONARDO_API_KEY` | Yes | — | Leonardo AI key |
+| `HF_TOKEN` | No | "" | HuggingFace token |
+| `USE_EDGE_TTS` | No | `true` | `false` = gTTS fallback |
 | `DEFAULT_LANGUAGE` | No | `hi` | Default narration language |
 | `DEFAULT_FORMAT` | No | `landscape` | Default video format |
-| `LOG_LEVEL` | No | `INFO` | Logging verbosity (DEBUG/INFO/WARNING/ERROR) |
-
-### Language Codes
-
-| Code | Language | Code | Language |
-|------|----------|------|----------|
-| `hi` | Hindi | `kn` | Kannada |
-| `ta` | Tamil | `ml` | Malayalam |
-| `te` | Telugu | `pa` | Punjabi |
-| `bn` | Bengali | `ur` | Urdu |
-| `gu` | Gujarati | | |
-| `mr` | Marathi | | |
+| `LOG_LEVEL` | No | `INFO` | DEBUG/INFO/WARNING/ERROR |
 
 ---
 
-## 20. YouTube Upload Workflow (Manual)
-
-Manual upload is recommended for monetization — gives you control over quality before publishing.
+## 22. YouTube Upload Workflow
 
 | Step | Action |
 |------|--------|
-| 1 — Make video | Run RAGAI → video saved in `output/` folder |
-| 2 — Review | Watch the video — check quality, voice, images |
-| 3 — Open YouTube Studio | Go to studio.youtube.com |
-| 4 — Upload | Click Upload → select your MP4 file |
-| 5 — Title | Write SEO-optimized Hindi title e.g. "आंचल की कहानी \| प्रेरणादायक कहानी" |
-| 6 — Description | Add story summary + hashtags from `metadata.txt` |
-| 7 — Thumbnail | Use `*_thumbnail.jpg` from output folder or custom |
-| 8 — Schedule | Post at 7–9 PM IST for best reach |
-| 9 — Publish | Set Public when ready |
+| 1 | Run RAGAI → video saved in `output/video_YYYYMMDD_HHMMSS/` |
+| 2 | Watch the video — check quality, voice, images, music |
+| 3 | Open `metadata.txt` — copy title, description, hashtags |
+| 4 | Go to studio.youtube.com → Upload |
+| 5 | Select `video.mp4` |
+| 6 | Paste title and description from metadata.txt |
+| 7 | Upload `thumbnail.jpg` as custom thumbnail |
+| 8 | Schedule for 7–9 PM IST |
+| 9 | Publish |
 
 ### Best Upload Times (IST)
 
 - Weekdays: 7:00 PM – 9:00 PM
 - Weekends: 10:00 AM – 12:00 PM or 7:00 PM – 9:00 PM
-- Avoid posting at night or early morning
-
-### Recommended Hashtags for Hindi Content
-
-```
-#HindiKahani #HindiStory #MotivationalStory #AIVideo #RAGAI 
-#HindiContent #KahaniHindi #YoutubeHindi #PrernaDayakKahani #FamilyStory
-```
 
 ---
 
-## 21. YouTube Monetization Requirements
+## 23. YouTube Monetization Requirements
 
 | Requirement | Target |
 |-------------|--------|
 | Subscribers | 1,000 minimum |
 | Watch Hours | 4,000 hours in last 12 months |
-| Content Policy | No copyright violations, original content |
-| Consistency | Post regularly — aim for 1 video/day minimum |
+| Consistency | 1 video/day minimum |
 | Estimated timeline | 3–6 months with daily posting |
-
-### Content Strategy for Fast Growth
-
-1. Post 1 video daily minimum — consistency is key
-2. Use real Indian city/village names in topics (Delhi, Mumbai, Hapur etc.)
-3. Family and motivational stories get highest watch time
-4. Add custom thumbnail — increases click rate by 3x
-5. Reply to all comments in first 24 hours
-6. Share on WhatsApp groups and Facebook
 
 ---
 
-## 22. Troubleshooting Guide
+## 24. Troubleshooting Guide
 
 | Problem | Solution |
 |---------|---------|
+| **FFmpeg colorbalance error** | Must use FFmpeg 8.x from gyan.dev. Older versions use different parameter names |
+| **No background music / music inaudible** | Must run pipeline after April 2026 (v8.0 fix). Old videos need re-generation |
+| **Image squished/distorted** | Fixed in v8.0. Re-run pipeline — new videos use contain+blur approach |
+| **Image cropped (head/feet cut off)** | Fixed in v8.0. Safe pan zones keep Ken Burns within image content |
 | **Virtual environment not found** | `python -m venv venv` → `venv\Scripts\activate` → `pip install -r requirements.txt` |
-| **FFmpeg not found on PATH** | Verify: `ffmpeg -version`. Re-add `C:\ffmpeg\bin` to System PATH (see section 3.3) |
-| **Missing required config key(s): GROQ_API_KEY** | Check `.env` file exists in project root. Verify key names exactly match. No spaces around `=` |
-| **ModuleNotFoundError: No module named 'pydub'** | `venv\Scripts\activate` → `pip install pydub` |
-| **ModuleNotFoundError: No module named 'edge_tts'** | `pip install edge-tts` |
-| **Edge-TTS fails / no audio** | Set `USE_EDGE_TTS=false` in `.env` to fall back to gTTS. Check internet connection |
-| **Leonardo AI returns 400 / image generation fails** | Verify `LEONARDO_API_KEY` is correct. Check daily token balance at https://app.leonardo.ai/. Resolution is fixed at 1344×768 (safe) |
-| **Groq rate limit errors (429)** | Free tier: 30 req/min, 6000 tokens/min. Reduce scene count (5 instead of 10). Wait 60s and retry. Or switch to backup model (see section 15) |
-| **Video output is black / corrupted** | Run diagnostics: `python ragai.py --diagnose`. Check `logs/` folder for latest log. Ensure `tmp/` directory is writable |
-| **GUI doesn't open (Tkinter error)** | Tkinter is included with Python on Windows. Reinstall Python if missing. Ensure running from venv: `venv\Scripts\activate` |
-| **App crashes on startup** | `python ragai.py --diagnose` — review output for missing packages or config issues |
-| **Intel QSV not detected but I have Arc GPU** | Update Intel Graphics driver via Windows Update or Intel Arc Control. Verify FFmpeg build has QSV: `ffmpeg -encoders | findstr qsv` |
-| **OpenVINO import error** | `pip install "optimum[openvino]" diffusers accelerate` |
-| **Scene Re-Generate button does nothing** | Must run a full generation first. Pipeline object is stored after completion |
-| **Baby face emoji not showing in GUI header** | This is a Windows tkinter limitation — the labels use system emoji renderer. Ensure Windows is up to date |
-| **Mixed voices in video** | Set `USE_EDGE_TTS=false` for consistent gTTS voice across all scenes |
-| **No sound in video** | Check `music/` folder has .mp3 files. Run `create_music_v2.py` if missing |
-| **Video too slow to make** | Cinema 4K is intentionally slow for quality. Use Draft or Standard preset for faster preview. Enable QSV if you have Intel Arc GPU |
-| **Groq model decommissioned** | Change model name in `story_generator.py` — check console.groq.com/docs for current models |
-| **All image providers failed** | Check internet connection. Verify Leonardo API key. Install OpenVINO for offline fallback: `pip install "optimum[openvino]" diffusers` |
+| **FFmpeg not found on PATH** | Verify: `ffmpeg -version`. Re-add `C:\ffmpeg\bin` to System PATH |
+| **Missing GROQ_API_KEY** | Check `.env` file exists in project root. No spaces around `=` |
+| **Edge-TTS fails / no audio** | Set `USE_EDGE_TTS=false` in `.env`. Check internet connection |
+| **Leonardo AI returns 400** | Check API key in `.env`. Free quota may be exhausted — Pollinations fallback activates |
+| **Groq rate limit (429)** | Free tier: 30 req/min. Reduce scene count or switch to backup model |
+| **Video output is black** | Run `python ragai.py --diagnose`. Check `logs/` folder |
+| **Intel QSV not detected** | Update Intel Graphics driver. Verify: `ffmpeg -encoders | findstr qsv` |
+| **No sound in video** | Check `music/` folder has .mp3 files. Run `python create_music_v2.py` |
+| **Video too slow to make** | Use Draft or Standard preset. Enable QSV if you have Intel Arc GPU |
+| **All image providers failed** | Check internet. Verify Leonardo API key. Install OpenVINO for offline fallback |
+| **music/ folder empty** | Run `python create_music_v2.py` to regenerate all 7 tracks |
+| **sample_rate=96000 in output** | Old bug — fixed in v8.0. Re-run pipeline for 44.1kHz output |
 
 ---
 
-## 23. Quick Rebuild Checklist
-
-Use this checklist when rebuilding on a new machine:
+## 25. Quick Rebuild Checklist
 
 - [ ] Install Python 3.11 or 3.12 (add to PATH)
 - [ ] Install Git
-- [ ] Install FFmpeg 8.x (add `bin/` to PATH)
+- [ ] Install FFmpeg **8.x** from gyan.dev (add `bin/` to PATH)
 - [ ] Install VS Code + Python extension
-- [ ] Clone/copy project to local folder
+- [ ] Clone project: `git clone https://github.com/kishorekunal64-netizen/taskflow.git`
 - [ ] `python -m venv venv`
 - [ ] `venv\Scripts\activate`
 - [ ] `pip install -r requirements.txt`
 - [ ] Create `.env` with `GROQ_API_KEY` and `LEONARDO_API_KEY`
-- [ ] (Optional) `pip install "optimum[openvino]" diffusers` for offline images
+- [ ] `python create_music_v2.py` (generate music tracks)
+- [ ] `python ragai.py --diagnose` (verify everything)
 - [ ] Double-click `START_RAGAI.bat` to launch
-- [ ] Run `python ragai.py --diagnose` to verify everything
 
 ---
 
-## 24. Before Next Laptop Rebuild — Backup Checklist
-
-**IMPORTANT: Back up these files to Google Drive or email them to yourself before rebuilding!**
+## 26. Before Next Laptop Rebuild — Backup Checklist
 
 | Priority | File / Folder | Why |
 |----------|--------------|-----|
-| 🔴 Critical | `.env` | Your API keys — cannot recover without this |
-| 🔴 Critical | All `*.py` files in project root | The entire application |
-| 🟡 Important | `music/` folder | 7 generated tracks (or re-run `create_music_v2.py`) |
-| 🟡 Important | `requirements.txt` | Exact dependency versions |
-| 🟡 Important | `START_RAGAI.bat` | Launcher script |
-| 🟢 Optional | `output/` folder | Keep your best videos |
-| 🟢 Optional | `logs/` folder | Useful for debugging history |
+| Critical | `.env` | Your API keys |
+| Critical | All `*.py` files in project root | The entire application |
+| Important | `music/` folder | 7 generated tracks |
+| Important | `requirements.txt` | Exact dependency versions |
+| Important | `START_RAGAI.bat` | Launcher script |
+| Optional | `output/` folder | Keep your best videos |
 
-**Do NOT back up:**
-- `venv/` — recreate with `python -m venv venv`
-- `tmp/` — auto-generated working files
-- `__pycache__/` — auto-generated bytecode
-- `ffmpeg-8.1-essentials_build/` — re-download from gyan.dev
+**Do NOT back up:** `venv/`, `tmp/`, `__pycache__/`, `ffmpeg-8.1-essentials_build/`
 
 ---
 
-## 25. Pending Items & Future Upgrades
+## 27. Pending Items & Future Upgrades
 
-### Pending — To Complete
+### Pending
 
 | Item | Details |
 |------|---------|
-| YouTube Auto-Upload | Google Cloud project 'RAGAI YOUTUBE' created, API enabled, OAuth client created. Stopped because ragai052018@gmail.com was disabled. Use main Gmail to complete setup when needed |
-| Edge-TTS on WiFi | Blocked by current WiFi/router. Works on mobile hotspot. May work on home WiFi — test after rebuild. **Auto-detection added in v6.1** — RAGAI now probes `speech.platform.bing.com:443` at startup and silently switches to gTTS if blocked. No mid-generation failures. |
-| OpenVINO end-to-end test | `_openvino()` method implemented and integrated. Run `python test_openvino.py` to verify on Arc 140V without running the full pipeline. |
+| YouTube Auto-Upload | OAuth setup pending — use manual upload for now |
+| Edge-TTS on WiFi | Blocked by some routers. Works on mobile hotspot. Auto-detection added in v6.1 |
 
-### Future Upgrades (After Revenue)
+### Future Upgrades
 
 | Upgrade | Benefit |
 |---------|---------|
-| Acer Predator Helios Neo 16S (RTX 5070) | Local AI — $0 API costs. Pays for itself in 18 months at 40 videos/day |
-| Leonardo paid plan ($24/month) | 80+ videos/day instead of 1–2 |
-| Groq Dev Tier | Higher daily token limits |
-| AnimateDiff / Stable Video | Real AI video motion (requires RTX 5070) |
+| Acer Predator Helios Neo 16S (RTX 5070) | Local AI — $0 API costs |
+| Leonardo paid plan ($24/month) | 80+ videos/day |
+| AnimateDiff / Stable Video | Real AI video motion |
 | YouTube auto-upload | Fully automated publish pipeline |
 | Batch generation | Queue multiple topics, run overnight |
 
 ---
 
-## 26. Quick Reference Commands
+## 28. Quick Reference Commands
 
-### Run RAGAI (GUI)
 ```cmd
+# Launch GUI
 venv\Scripts\activate
 python ragai.py
-```
 
-### Run Diagnostics
-```cmd
-venv\Scripts\activate
+# Run diagnostics
 python ragai.py --diagnose
-```
 
-### Regenerate Music Tracks
-```cmd
-venv\Scripts\activate
+# Regenerate music tracks
 python create_music_v2.py
-```
 
-### Check Active Groq Model
-```cmd
-python -c "import re; content=open('story_generator.py',encoding='utf-8').read(); print(set(re.findall(r'llama[a-zA-Z0-9\-\.]+', content)))"
-```
-
-### Switch to Backup Groq Model (llama-3.1-8b-instant)
-```cmd
+# Switch to backup Groq model
 python -c "content=open('story_generator.py',encoding='utf-8').read(); content=content.replace('llama-3.3-70b-versatile','llama-3.1-8b-instant'); open('story_generator.py','w',encoding='utf-8').write(content); print('Backup model ON!')"
-```
 
-### Switch Back to Best Groq Model
-```cmd
+# Switch back to best Groq model
 python -c "content=open('story_generator.py',encoding='utf-8').read(); content=content.replace('llama-3.1-8b-instant','llama-3.3-70b-versatile'); open('story_generator.py','w',encoding='utf-8').write(content); print('Best model ON!')"
-```
 
-### Enable Natural Voice (Edge-TTS)
-```cmd
+# Enable natural voice (Edge-TTS)
 python -c "content=open('.env',encoding='utf-8').read(); open('.env','w',encoding='utf-8').write(content.replace('USE_EDGE_TTS=false','USE_EDGE_TTS=true')); print('Natural voice ON!')"
-```
 
-### Enable Fallback Voice (gTTS)
-```cmd
+# Enable fallback voice (gTTS)
 python -c "content=open('.env',encoding='utf-8').read(); open('.env','w',encoding='utf-8').write(content.replace('USE_EDGE_TTS=true','USE_EDGE_TTS=false')); print('gTTS voice ON!')"
-```
 
-### Install OpenVINO (offline image generation)
-```cmd
-venv\Scripts\activate
-pip install "optimum[openvino]" diffusers accelerate
-```
-
-### Check Intel QSV availability
-```cmd
+# Check Intel QSV availability
 ffmpeg -hide_banner -encoders 2>nul | findstr qsv
-```
 
-### Free Up RAM (if slow)
-```cmd
-taskkill /F /IM ollama.exe
-```
-
-### View Latest Log
-```cmd
+# View latest log
 powershell "Get-ChildItem logs\ | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | Get-Content"
+
+# Install OpenVINO (offline image generation)
+pip install "optimum[openvino]" diffusers accelerate
+
+# Test BGM audio levels on an existing video
+ffmpeg -i output\video_FOLDER\video.mp4 -af volumedetect -vn -f null - 2>&1 | findstr volume
 ```
 
 ---
 
-*RAGAI Video Factory v6.0 — AI-powered cinematic video generation for Indian language content.*
-*Built by Kunal with Kiro | March 2026*
-
-
----
-
-## 27. RAGAI Editor V2
+## 29. RAGAI Editor V2
 
 RAGAI Editor V2 is a standalone Tkinter desktop application that automatically collects videos produced by RAGAI and compiles them into long-form YouTube compilation videos.
-
-### Purpose
-
-- Watch `./output/` for new RAGAI-generated videos
-- Group clips by topic/hashtag
-- Auto-generate hook intro + outro clips
-- Compile into a single long-form video (12–20 min)
-- Generate viral thumbnails
-- Save final compilation to `./compiled/`
 
 ### Entry Point
 
@@ -964,89 +960,36 @@ Or double-click `START_EDITOR.bat`.
 ### Auto Mode
 
 Toggle **AUTO MODE** in the right panel. When enabled:
-
 1. Watcher detects new video folders in `./output/`
-2. Clips are imported and metadata extracted
-3. When 3+ clips share related hashtags, a compilation group is formed
-4. Hook intro is generated via Groq LLM + Edge-TTS
-5. Compilation is assembled via FFmpeg (hook + clips + outro)
-6. Thumbnail is generated
-7. Final video saved to `./compiled/`
-8. Clips marked as `Exported`
-
-### Manual Mode
-
-1. Open editor — clip library auto-populates from `./output/`
-2. Drag clips onto the timeline
-3. Adjust trim points and transitions
-4. Click **EXPORT VIDEO**
+2. When 3+ clips share related hashtags, a compilation group is formed
+3. Hook intro is generated via Groq LLM + Edge-TTS
+4. Compilation is assembled via FFmpeg (hook + clips + outro)
+5. Thumbnail is generated
+6. Final video saved to `./compiled/`
 
 ---
 
-## 28. RAGAI Editor V2 — Module Reference
+## 30. RAGAI Editor V2 — Module Reference
 
 | Module | File | Responsibility |
 |--------|------|---------------|
-| Entry point | `editor.py` | Init clip manager, start watcher, launch GUI, init auto pipeline |
-| GUI | `editor_gui.py` | 3-panel Tkinter interface (ClipLibraryPanel, TimelinePanel, ExportPanel) |
+| Entry point | `editor.py` | Init clip manager, start watcher, launch GUI |
+| GUI | `editor_gui.py` | 3-panel Tkinter interface |
 | Config | `editor_config.py` | Load/save `ragai_config.json` |
 | Clip Manager | `clip_manager.py` | Maintain clip library in `editor_clips.json` |
-| Watcher | `watcher.py` | watchdog monitor on `./output/`, skips locked folders |
+| Watcher | `watcher.py` | watchdog monitor on `./output/` |
 | Topic Engine | `topic_engine.py` | Group clips by hashtag similarity |
-| Hook Generator | `hook_generator.py` | Groq LLM hook text → Edge-TTS voice → FFmpeg intro clip |
-| Outro Generator | `outro_generator.py` | Subscribe outro clip via FFmpeg |
-| Variation Engine | `variation_engine.py` | Rotate voices, randomize music/order/transitions |
-| Thumbnail Generator | `thumbnail_generator.py` | Extract frame, darken, overlay Hindi text, glow effect |
-| Timeline | `timeline.py` | Tkinter Canvas drag-and-drop timeline |
-| Assembler | `assembler.py` | FFmpeg compile: hook + clips + outro → final MP4 |
-| Auto Pipeline | `auto_pipeline.py` | Fully automated batch compilation workflow |
-
-### Clip States
-
-| State | Meaning |
-|-------|---------|
-| `Available` | In library, not yet on timeline |
-| `InTimeline` | Added to current timeline |
-| `Exported` | Already compiled into a video |
-
-### Clip Library Persistence
-
-Clip metadata is stored in `editor_clips.json` (runtime file, not committed to Git).
-
-Each entry contains: `filename`, `path`, `duration`, `resolution`, `topic`, `hashtags`, `thumbnail`, `created_at`, `state`.
-
-### Output Folder Structure (v6.0+)
-
-Each RAGAI generation saves into its own folder:
-
-```
-output/
-├── video_20260324_001/
-│   ├── video.mp4
-│   ├── thumbnail.jpg
-│   └── metadata.txt
-├── video_20260324_002/
-│   ├── video.mp4
-│   ├── thumbnail.jpg
-│   └── metadata.txt
-```
-
-The watcher reads `metadata.txt` for title, description, and hashtags.
-
-### Compiled Output
-
-```
-compiled/
-├── RAGAI_Compilation_VillageStory_20260324.mp4
-├── RAGAI_Compilation_VillageStory_20260324_thumb.jpg
-└── .thumbs/   ← cached thumbnail previews
-```
+| Hook Generator | `hook_generator.py` | Groq LLM hook text → Edge-TTS → FFmpeg intro |
+| Outro Generator | `outro_generator.py` | Subscribe outro clip |
+| Variation Engine | `variation_engine.py` | Rotate voices, music, order |
+| Thumbnail Generator | `thumbnail_generator.py` | Extract frame, overlay Hindi text |
+| Timeline | `timeline.py` | Tkinter Canvas drag-and-drop |
+| Assembler | `assembler.py` | FFmpeg compile: hook + clips + outro |
+| Auto Pipeline | `auto_pipeline.py` | Fully automated batch compilation |
 
 ---
 
-## 29. Global Config — ragai_config.json
-
-Both RAGAI and RAGAI Editor read from `ragai_config.json` in the project root.
+## 31. Global Config — ragai_config.json
 
 ```json
 {
@@ -1062,51 +1005,11 @@ Both RAGAI and RAGAI Editor read from `ragai_config.json` in the project root.
 }
 ```
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `output_dir` | `./output` | Where RAGAI saves generated videos |
-| `compiled_dir` | `./compiled` | Where Editor saves compilations |
-| `default_quality` | `cinema` | Quality preset for compilations |
-| `default_language` | `hi` | Default narration language |
-| `enable_qsv` | `true` | Use Intel QSV hardware encoding |
-| `hook_enabled` | `true` | Generate hook intro for compilations |
-| `outro_enabled` | `true` | Append subscribe outro |
-| `auto_thumbnail` | `true` | Auto-generate viral thumbnail |
-| `auto_titles` | `true` | Auto-generate title from hashtags |
-
-Loaded via `editor_config.py` → `load_editor_config()`. Falls back to safe defaults if file is missing.
-
 ---
 
-## 30. Job Manager & Crash Recovery System
+## 32. Job Manager & Crash Recovery System
 
 `job_manager.py` ensures the pipeline runs reliably for long periods without manual supervision.
-
-### Purpose
-
-- Track every generation job with full lifecycle state
-- Detect and recover from crashes or interrupted generations
-- File-lock mechanism prevents watcher from importing incomplete videos
-- Health monitor alerts if any component stops
-
-### Job State File
-
-All job state is persisted in `jobs_state.json` (runtime file, not committed to Git).
-
-```json
-{
-  "abc123": {
-    "job_id":        "abc123...",
-    "topic":         "Village girl becomes IAS officer",
-    "status":        "completed",
-    "started_at":    "2026-03-24T10:00:00+00:00",
-    "completed_at":  "2026-03-24T10:08:30+00:00",
-    "output_folder": "video_20260324_001",
-    "error":         null,
-    "retries":       0
-  }
-}
-```
 
 ### Job Statuses
 
@@ -1115,87 +1018,28 @@ All job state is persisted in `jobs_state.json` (runtime file, not committed to 
 | `pending` | Queued, not yet started |
 | `processing` | Generation actively running |
 | `completed` | Video verified and saved |
-| `failed` | Generation failed or output invalid |
-
-### Job Lifecycle
-
-```
-create_job(topic)          → status: pending
-mark_processing(job_id)    → status: processing  +  write generation.lock
-  ... RAGAI runs ...
-mark_completed(job_id)     → verify video.mp4 exists + size stable
-                           → status: completed   +  remove generation.lock
-                           → OR status: failed if verification fails
-```
+| `failed` | Generation failed |
 
 ### File Lock Mechanism
 
-During generation, a `generation.lock` file is written inside the output folder:
-
-```
-output/video_20260324_001/
-├── generation.lock   ← watcher ignores this folder while lock exists
-├── video.mp4
-├── thumbnail.jpg
-└── metadata.txt
-```
-
-The watcher (`watcher.py`) skips any folder containing `generation.lock`. The lock is removed after generation completes successfully.
+During generation, a `generation.lock` file is written inside the output folder. The watcher skips any folder containing this lock. Lock is removed after successful completion.
 
 ### Crash Recovery
 
 On scheduler startup, `job_manager.startup_recovery()` runs automatically:
-
-1. Scans `jobs_state.json` for any job with `status: processing`
-2. For each interrupted job:
-   - If `video.mp4` exists and is valid → marks `completed`, removes stale lock
-   - If output is missing/incomplete → marks `failed`, prepends topic back to `topics_queue.json`
-3. Max retries: **2** — after that, job is abandoned with error logged
-
-### Health Monitor
-
-Runs every 60 seconds in a background thread. Checks:
-
-- Scheduler heartbeat (warns if scheduler stopped)
-- Watcher heartbeat (warns if folder watcher stopped)
-- Topic queue size (warns if queue is empty)
-- Stuck jobs (warns if any job has been `processing` for > 30 minutes)
-
-All warnings logged to `logs/job_manager.log`.
-
-### Log File
-
-```
-logs/job_manager.log
-```
-
-Format: `YYYY-MM-DDTHH:MM:SS  LEVEL     message`
+- Scans for any job with `status: processing`
+- If `video.mp4` exists and is valid → marks `completed`
+- If output is missing → marks `failed`, prepends topic back to queue
+- Max retries: 2
 
 ---
 
-## 31. Scheduler — Automated Topic Queue
+## 33. Scheduler — Automated Topic Queue
 
-`scheduler.py` reads topics from `topics_queue.json` and runs RAGAI generation for each topic automatically.
-
-### Topics Queue File
-
-```json
-[
-  "Village girl becomes IAS officer",
-  "A soldier saves his village",
-  "Radha doing pooja in Shiva temple",
-  "..."
-]
-```
-
-Topics are consumed from the top. Recovered/failed topics are prepended back to the front.
-
-### Running the Scheduler
+`scheduler.py` reads topics from `topics_queue.json` and runs RAGAI generation automatically.
 
 ```cmd
-venv\Scripts\activate
-
-# Run continuously (default 5-min interval between jobs)
+# Run continuously (default 5-min interval)
 python scheduler.py
 
 # Run once (process one topic and exit)
@@ -1204,131 +1048,78 @@ python scheduler.py --once
 # Custom interval
 python scheduler.py --interval 300
 
-# Crash recovery only (no new jobs)
+# Crash recovery only
 python scheduler.py --recover-only
 ```
 
 Or double-click `START_SCHEDULER.bat`.
 
-### Scheduler Flags
-
-| Flag | Description |
-|------|-------------|
-| `--once` | Process one topic then exit |
-| `--interval N` | Seconds to wait between jobs (default: 300) |
-| `--recover-only` | Run crash recovery and exit, no new generation |
-
-### Full Automation Flow
-
-```
-START_SCHEDULER.bat
-      │
-      ▼
-scheduler.py starts
-      │
-      ├─► job_manager.startup_recovery()   ← fix any crashed jobs
-      │
-      └─► loop:
-            read topics_queue.json
-            pop next topic
-            job_manager.create_job(topic)
-            job_manager.mark_processing(job_id, folder)
-            job_manager.write_lock(folder)
-            run: python ragai.py --cli --topic "..." 
-            job_manager.mark_completed(job_id, folder)
-            job_manager.remove_lock(folder)
-            wait interval
-            repeat
-```
-
-Meanwhile, `watcher.py` monitors `./output/` and imports completed (unlocked) videos into the Editor clip library automatically.
-
 ---
 
-## 32. Complete Project Structure Reference (v6.0 + Editor V2)
+## 34. Complete Project Structure Reference (v7.4)
 
 ```
 ragai/
-│
-├── ragai.py                Entry point — GUI/CLI dispatch
-├── config.py               .env loading and AppConfig dataclass
-├── models.py               All enums, dataclasses, constants, exceptions
-├── pipeline.py             5-stage pipeline orchestrator
-│
-├── story_generator.py      Stage 2 — Groq LLaMA story/scene generation
-├── image_generator.py      Stage 3 — 4-provider image chain
-├── voice_synthesizer.py    Stage 4 — Edge-TTS / gTTS voice synthesis
-├── video_assembler.py      Stage 5 — FFmpeg Ken Burns + QSV encode
-│
-├── style_detector.py       Auto-detect visual style from topic keywords
-├── audio_transcriber.py    Groq Whisper transcription + audio splitting
-├── image_importer.py       User image loading, validation, resize
-├── music_selector.py       BGM selection by style + keyword scoring
-├── log_setup.py            Logging configuration
-├── gui.py                  Tkinter GUI — animated header, 3 tabs, dark theme
-├── ragai_diagnose.py       Diagnostics runner
-├── create_music_v2.py      One-time music track generator
-│
-├── editor.py               RAGAI Editor V2 — entry point
-├── editor_gui.py           3-panel Tkinter GUI (Library/Timeline/Export)
-├── editor_config.py        ragai_config.json loader
-├── clip_manager.py         Clip library manager (editor_clips.json)
-├── watcher.py              watchdog folder monitor (skips locked folders)
-├── timeline.py             Tkinter Canvas drag-and-drop timeline
-├── assembler.py            FFmpeg compilation assembler
-├── auto_pipeline.py        Fully automated batch compilation
-├── topic_engine.py         Hashtag-based clip grouping
-├── hook_generator.py       AI hook intro video generator
-├── outro_generator.py      Subscribe outro clip generator
-├── variation_engine.py     Content variation (voices, music, order)
-├── thumbnail_generator.py  Viral thumbnail composer
-│
-├── job_manager.py          Job state tracker + crash recovery
-├── scheduler.py            Automated topic queue runner
-│
-├── viral_scorer.py         Viral potential scoring
-├── trend_fetcher.py        Trending topic fetcher
-│
-├── ragai_config.json       Global config (output_dir, quality, QSV, etc.)
-├── topics_queue.json       Topic queue for scheduler
-├── jobs_state.json         Runtime job state (not committed)
-├── editor_clips.json       Runtime clip library (not committed)
-│
-├── START_RAGAI.bat         Launch RAGAI GUI
-├── START_EDITOR.bat        Launch RAGAI Editor V2
-├── START_SCHEDULER.bat     Launch automated scheduler
-├── requirements.txt        Python dependencies
-├── .env                    API keys (not committed)
-│
-├── music/                  7 background music tracks
-├── output/                 Generated videos (folder-per-video structure)
-├── compiled/               Editor compilation outputs
-├── logs/                   Application logs
-└── venv/                   Virtual environment (not committed)
+├── Core Pipeline
+│   ├── ragai.py, config.py, models.py, pipeline.py
+│   ├── story_generator.py, image_generator.py
+│   ├── voice_synthesizer.py, video_assembler.py (v8.0)
+│   ├── style_detector.py (FFmpeg 8.x), audio_transcriber.py
+│   ├── image_importer.py (original quality), music_selector.py
+├── Content Intelligence
+│   ├── topic_quality_engine.py, engagement_predictor.py
+│   ├── narrative_variation_engine.py, visual_variation_engine.py
+│   ├── content_variation_engine.py, story_archive.py
+│   ├── thumbnail_ab_tester.py
+├── Intelligence Layer
+│   ├── language_engine.py, story_knowledge_graph.py
+│   ├── scene_composer.py, style_engine.py
+│   ├── emotion_detector.py, render_optimizer.py
+│   ├── qa_engine.py, prompt_optimizer.py
+├── Flexible Input Modes
+│   ├── manual_topic_loader.py, script_loader.py
+│   ├── mic_narration_recorder.py, audio_sync_engine.py
+├── Cinematic Prompt Engine
+│   ├── cinematic_prompt_engine.py, character_anchor_engine.py
+│   ├── location_anchor_engine.py, prompt_template_builder.py
+├── Character Reference System
+│   ├── character_profile_generator.py
+│   ├── character_reference_manager.py, reference_prompt_engine.py
+├── Editor V2
+│   ├── editor.py, editor_gui.py, editor_config.py
+│   ├── clip_manager.py, watcher.py, timeline.py
+│   ├── assembler.py, auto_pipeline.py, topic_engine.py
+│   ├── hook_generator.py, outro_generator.py
+│   ├── variation_engine.py, thumbnail_generator.py
+├── Automation
+│   ├── job_manager.py, scheduler.py
+├── Analytics
+│   ├── analytics_engine.py, retention_optimizer.py
+│   ├── channel_manager.py, shorts_generator.py
+│   ├── title_generator.py, viral_scorer.py, trend_fetcher.py
+├── Folders
+│   ├── output/    compiled/    characters/
+│   ├── narrations/    scripts/    music/
+│   ├── logs/    tmp/
 ```
 
 ---
 
-## 33. Rebuild on New System — Complete Checklist
-
-Use this when setting up RAGAI on a new machine from scratch.
+## 35. Rebuild on New System — Complete Checklist
 
 ### Step 1 — Install Tools
-
-- [ ] Python 3.11 or 3.12 — https://python.org/downloads — check "Add to PATH"
-- [ ] Git — https://git-scm.com/download/win
-- [ ] FFmpeg 8.x — https://www.gyan.dev/ffmpeg/builds/ → extract to `C:\ffmpeg\` → add `C:\ffmpeg\bin` to System PATH
-- [ ] VS Code + Python extension (`ms-python.python`)
+- [ ] Python 3.11 or 3.12 — check "Add to PATH"
+- [ ] Git
+- [ ] FFmpeg **8.x** from gyan.dev → extract to `C:\ffmpeg\` → add `C:\ffmpeg\bin` to PATH
+- [ ] VS Code + Python extension
 
 ### Step 2 — Get the Project
-
 ```cmd
 git clone https://github.com/kishorekunal64-netizen/taskflow.git ragai
 cd ragai
 ```
 
 ### Step 3 — Virtual Environment
-
 ```cmd
 python -m venv venv
 venv\Scripts\activate
@@ -1336,9 +1127,6 @@ pip install -r requirements.txt
 ```
 
 ### Step 4 — Configure .env
-
-Create `.env` in project root:
-
 ```env
 GROQ_API_KEY=gsk_your_key_here
 LEONARDO_API_KEY=your_leonardo_uuid_here
@@ -1350,36 +1138,30 @@ LOG_LEVEL=INFO
 ```
 
 ### Step 5 — Generate Music Tracks
-
 ```cmd
 python create_music_v2.py
 ```
 
 ### Step 6 — Verify Everything
-
 ```cmd
 python ragai.py --diagnose
 ```
 
 ### Step 7 — Launch
-
-| App | Command |
-|-----|---------|
-| RAGAI Video Factory | Double-click `START_RAGAI.bat` |
-| RAGAI Editor V2 | Double-click `START_EDITOR.bat` |
-| Automated Scheduler | Double-click `START_SCHEDULER.bat` |
-
-### Step 8 — Optional: Intel Arc Offline Images
-
 ```cmd
-pip install "optimum[openvino]" diffusers accelerate
+# RAGAI Video Factory
+START_RAGAI.bat
+
+# RAGAI Editor V2
+START_EDITOR.bat
+
+# Automated Scheduler
+START_SCHEDULER.bat
 ```
 
 ---
 
-## 34. How to Ask Kiro to Rebuild RAGAI on a New System
-
-If you need to rebuild the entire RAGAI system using Kiro AI on a new machine, use this prompt:
+## 36. How to Ask Kiro to Rebuild RAGAI on a New System
 
 ```
 You are rebuilding the RAGAI Video Factory system on a new Windows machine.
@@ -1392,33 +1174,32 @@ The full system consists of:
 
 Tech stack:
 - Python 3.11+, Windows 11, Intel Arc 140V GPU (QSV + OpenVINO)
-- FFmpeg 8.x with QSV support
+- FFmpeg 8.x with QSV support (REQUIRED — 8.x only)
 - Groq API (story + transcription), Leonardo AI (images), Edge-TTS (voice)
-- Tkinter GUI, watchdog, plyer, Pillow, OpenCV, pydub
+- Tkinter GUI, watchdog, Pillow, numpy, pydub
 
 Please:
 1. Read RAGAI_SOP.md completely
-2. Recreate all Python modules as documented in Section 32
+2. Recreate all Python modules as documented in Section 34
 3. Recreate all .bat launchers
 4. Recreate requirements.txt
 5. Do NOT recreate .env (user will fill in API keys)
 6. Verify with: python ragai.py --diagnose
+
+IMPORTANT v8.0 requirements:
+- video_assembler.py must use contain+blur Ken Burns (not cover scale)
+- style_detector.py must use rs/gs/bs/rm/gm/bm for colorbalance (not ss/sm/sh)
+- BGM mix must use loudnorm + amix normalize=0 + aresample=44100
+- image_importer.py must NOT force-resize images (preserve original quality)
 ```
 
 ---
 
-*RAGAI Video Factory v6.0 + Editor V2 — AI-powered cinematic video generation and compilation.*
-*Built by Kunal with Kiro | March 2026*
+## 37. Content Intelligence Layer (v7.0)
 
----
+### 37.1 Topic Quality Engine — `topic_quality_engine.py`
 
-## 35. Content Intelligence Layer (v7.0)
-
-Added in March 2026. All modules are optional and controlled via `ragai_advanced_config.json`.
-
-### 35.1 Topic Quality Engine — `topic_quality_engine.py`
-
-Scores every topic before spending any API credits. Topics scoring below threshold are filtered out automatically.
+Scores every topic before spending any API credits.
 
 | Dimension | Weight | Description |
 |-----------|--------|-------------|
@@ -1427,52 +1208,29 @@ Scores every topic before spending any API credits. Topics scoring below thresho
 | Relatability | 30% | Family/village/struggle themes |
 | Popularity | 20% | Trending keyword match |
 
-Composite score range: 0–10. Topics below 2.0 are skipped.
+Topics below score 2.0 are skipped automatically.
 
-### 35.2 Engagement Predictor — `engagement_predictor.py`
+### 37.2 Engagement Predictor — `engagement_predictor.py`
 
-Predicts CTR and watch time before generation. Blocks low-engagement topics.
-
-Output example:
+Predicts CTR and watch time before generation. Output:
 ```json
 { "predicted_ctr": 7.87, "predicted_watch_minutes": 5.31, "should_generate": true }
 ```
 
-### 35.3 Narrative Variation Engine — `narrative_variation_engine.py`
+### 37.3 Narrative Variation Engine — `narrative_variation_engine.py`
 
-Rotates through 5 narrative structures so every video tells a story differently:
+Rotates through 5 narrative structures: Hero's Journey, Mystery Reveal, Conflict Resolution, Character Twist, Investigation.
 
-| Code | Structure |
-|------|-----------|
-| A | Hero's Journey |
-| B | Mystery Reveal |
-| C | Conflict Resolution |
-| D | Character Twist |
-| E | Investigation |
+### 37.4 Story Archive — `story_archive.py`
 
-### 35.4 Visual Variation Engine — `visual_variation_engine.py`
-
-Per-scene Ken Burns motion configs with hybrid patterns every 3–4 scenes. Prevents repetitive visual pacing.
-
-### 35.5 Content Variation Engine — `content_variation_engine.py`
-
-Rotates voice styles (SSML prosody), music moods, and scene pacing profiles automatically per topic.
-
-Pacing profiles: Balanced, Slow Burn, Dynamic, Fast Paced.
-
-### 35.6 Story Archive — `story_archive.py`
-
-SQLite database (`story_archive.db`) tracking all generated stories. Uses Jaccard similarity to detect duplicate topics and suggest variants.
-
-Functions: `save_story()`, `check_duplicate_topic()`, `retrieve_similar_topics()`, `suggest_variant()`, `stats()`
+SQLite database tracking all generated stories. Uses Jaccard similarity to detect duplicate topics.
 
 ---
 
-## 36. Thumbnail A/B Testing — `thumbnail_ab_tester.py`
+## 38. Thumbnail A/B Testing — `thumbnail_ab_tester.py`
 
-Generates 3 thumbnail layout variants (A, B, C) per video. Tracks CTR via Wilson lower-bound scoring. Auto-selects winner after 50+ impressions.
+Generates 3 thumbnail variants (A, B, C) per video. Tracks CTR via Wilson lower-bound scoring. Auto-selects winner after 50+ impressions.
 
-Variants are saved alongside the video:
 ```
 output/video_YYYYMMDD_HHMMSS/
 ├── video.mp4
@@ -1482,236 +1240,79 @@ output/video_YYYYMMDD_HHMMSS/
 └── metadata.txt
 ```
 
-Update CTR data from `analytics_data.json`:
-```python
-from thumbnail_ab_tester import ThumbnailABTester
-tester = ThumbnailABTester()
-tester.bulk_update_from_analytics("analytics_data.json")
-winner = tester.select_winner("video_id")
-```
-
 ---
 
-## 37. Performance Layer
+## 39. Performance Layer
 
-### 37.1 Parallel Scene Executor — `scene_parallel_executor.py`
+### Parallel Scene Executor — `scene_parallel_executor.py`
 
 Processes image generation, voice synthesis, and clip encoding concurrently using `ThreadPoolExecutor` with 4 workers. Reduces generation time by ~50–70%.
 
-### 37.2 Video Assembler Fixes — `video_assembler.py`
+### Video Assembler (v8.0) — `video_assembler.py`
 
 - Pipe-based Ken Burns (no PNG frame dump) — ~60–70% faster scene encoding
 - Intel QSV hardware encoding with automatic fallback to libx264
-- `OSError`/`BrokenPipeError` catch for Windows QSV pipe failures — auto-retries with libx264
-- `tempfile.TemporaryFile()` for stderr (eliminates pipe deadlock on long encodes)
+- Contain+blur approach — full image visible, no distortion
+- Safe pan zones — Ken Burns stays within image content
+- BGM: loudnorm + stereo 44.1kHz mix
 
 ---
 
-## 38. Intelligence Layer (v7.1)
+## 40. Intelligence Layer (v7.1)
 
-### 38.1 Language Engine — `language_engine.py`
+### Language Engine — `language_engine.py`
 
-Detects language from Unicode script ranges + English keyword heuristics. Supports 11 languages.
+Detects language from Unicode script ranges. Supports 11 languages including English.
 
-**English is now fully supported** — `Language.EN` added to models.py. Voice: `en-US-JennyNeural`.
+### Story Knowledge Graph — `story_knowledge_graph.py`
 
-| Language | Code | Edge-TTS Voice |
-|----------|------|----------------|
-| English | en | en-US-JennyNeural |
-| Hindi | hi | hi-IN-SwaraNeural |
-| Tamil | ta | ta-IN-PallaviNeural |
-| Telugu | te | te-IN-ShrutiNeural |
-| Bengali | bn | bn-IN-TanishaaNeural |
-| Gujarati | gu | gu-IN-DhwaniNeural |
-| Marathi | mr | mr-IN-AarohiNeural |
-| Kannada | kn | kn-IN-SapnaNeural |
-| Malayalam | ml | ml-IN-SobhanaNeural |
-| Punjabi | pa | pa-IN-VaaniNeural |
-| Urdu | ur | ur-PK-UzmaNeural |
+SQLite database storing topic, characters, locations, themes per story. Semantic similarity search prevents story repetition.
 
-### 38.2 Story Knowledge Graph — `story_knowledge_graph.py`
+### Render Optimizer — `render_optimizer.py`
 
-SQLite database (`story_graph.db`) storing topic, characters, locations, themes, and emotion arc per story. Semantic similarity search prevents story repetition across videos.
+Probes FFmpeg for NVENC/QSV/VAAPI GPU encoders. Encoder priority: NVENC → QSV → VAAPI → libx264.
 
-Functions: `add_story()`, `search_similar_story()`, `suggest_story_variant()`
+### QA Engine — `qa_engine.py`
 
-### 38.3 Scene Composer — `scene_composer.py`
-
-PIL-based layer compositor combining:
-- Background image
-- Character overlays (RGBA)
-- Foreground layer
-- Lighting presets: golden_hour, blue_hour, dramatic, soft_natural, night
-- Motion effects: vignette, film_grain, soft_blur_edges
-
-Used optionally before video assembly.
-
-### 38.4 Style Engine — `style_engine.py`
-
-Channel branding via `channel_styles.json`. Per-channel music style, voice style, color grade, and thumbnail colors.
-
-```json
-{
-  "devotional_channel": {
-    "music_style": "devotional",
-    "color_palette": "warm",
-    "voice_style": "calm"
-  }
-}
-```
-
-### 38.5 Emotion Detector — `emotion_detector.py`
-
-Keyword-based emotion scoring across Hindi + English. Detects: joy, sadness, tension, hope, inspiration, calm, conflict, resolution. Outputs per-scene arc map for `story_flow_optimizer.py`.
-
-### 38.6 Render Optimizer — `render_optimizer.py`
-
-Probes FFmpeg for NVENC/QSV/VAAPI GPU encoders. Returns optimal encode args per hardware. Recommends parallel worker count based on CPU/GPU availability.
-
-Encoder priority: NVENC → QSV → VAAPI → libx264 (CPU)
-
-### 38.7 QA Engine — `qa_engine.py`
-
-ffprobe-based validation of scene clips and final output. Checks:
-- Scene duration (1–120 seconds)
-- Audio stream presence
-- File size (minimum 100KB)
-
-Returns `regenerate_scenes` list for failed clips.
-
-### 38.8 Prompt Optimizer — `prompt_optimizer.py`
-
-Reads `analytics_data.json`, applies rules to strengthen hook/pacing/emotion prompt templates when metrics drop. Persists improvements to `prompt_templates.json`.
-
-Rules:
-- `retention_30s_pct < 60%` → strengthen hook instruction
-- `watch_time_minutes < 2.0` → tighten pacing instruction
-- `ctr_pct < 5.0%` → intensify emotion instruction
+ffprobe-based validation of scene clips and final output. Checks duration, audio stream, file size.
 
 ---
 
-## 39. Flexible Input Modes (v7.2)
+## 41. Flexible Input Modes (v7.2)
 
-### 39.1 Manual Topic Loader — `manual_topic_loader.py`
+### Manual Topic Loader — `manual_topic_loader.py`
 
-Load topics from `topics_manual.txt` (one per line) or `topics_queue.json` with priority over auto-discovered topics.
+Load topics from `topics_manual.txt` (one per line). Priority over auto-discovered topics.
 
-**Priority order:** topics_manual.txt → topics_queue.json → automated discovery
+### Microphone Narration Recorder — `mic_narration_recorder.py`
 
-```
-topics_manual.txt example:
-A poor farmer who saves his village
-A mysterious temple miracle
-A young girl who becomes a doctor
-```
-
-Consumed topics are removed from the file automatically. GUI integration: `add_manual_topic(topic)`.
-
-### 39.2 Script Loader — `script_loader.py`
-
-Load `.txt` scripts from `scripts/` directory. Bypasses `story_generator.py` entirely.
-
-Supported formats:
-- Explicit markers: `[SCENE 1]`, `[SCENE 2]`, etc.
-- Paragraph-based: blank lines separate scenes
-
-Processed scripts are renamed to `.done`.
-
-### 39.3 Microphone Narration Recorder — `mic_narration_recorder.py`
-
-Records microphone input via `sounddevice`, saves normalized WAV to `narrations/`. When a narration file exists, `voice_synthesizer.py` is bypassed.
+Records microphone input, saves normalized WAV to `narrations/`. Bypasses voice synthesizer when narration exists.
 
 ```cmd
 pip install sounddevice scipy
 ```
 
-Usage:
-```python
-from mic_narration_recorder import MicNarrationRecorder
-recorder = MicNarrationRecorder()
-path = recorder.record("story_001", duration_seconds=120)
-```
+### Audio Sync Engine — `audio_sync_engine.py`
 
-### 39.4 Audio Sync Engine — `audio_sync_engine.py`
-
-Maps a single narration WAV to multiple scenes using word-count-weighted or equal time distribution. Splits audio via FFmpeg and assigns `scene.audio_path` per scene.
+Maps a single narration WAV to multiple scenes using word-count-weighted distribution.
 
 ---
 
-## 40. Cinematic Prompt Engine (v7.3)
+## 42. Cinematic Prompt Engine (v7.3)
 
-Transforms plain scene descriptions into rich cinematic prompts. Zero additional API calls — only the prompt text changes.
-
-### 40.1 Cinematic Prompt Engine — `cinematic_prompt_engine.py`
-
-Wraps every prompt with rotating shot type and lighting style.
+Transforms plain scene descriptions into rich cinematic prompts. Zero additional API calls.
 
 **Shot types:** cinematic wide shot, dramatic close-up, low-angle cinematic shot, over-the-shoulder shot, cinematic aerial view, tracking shot perspective
 
-**Lighting styles:** golden hour lighting, soft morning light, dramatic sunset lighting, warm cinematic lighting, diffused cloudy daylight, moody night lighting
+**Lighting styles:** golden hour, soft morning light, dramatic sunset, warm cinematic, diffused cloudy daylight, moody night
 
-**Quality suffix appended:** `cinematic storytelling, ultra realistic, film still, shallow depth of field, 4k`
-
-### 40.2 Character Anchor Engine — `character_anchor_engine.py`
-
-10 default character profiles (farmer, girl, teacher, mother, officer, doctor, soldier, child, elder, woman). Detects character keywords in Hindi and English, injects the full physical description so the same character looks identical across all scenes.
-
-### 40.3 Location Anchor Engine — `location_anchor_engine.py`
-
-12 default location profiles (village, temple, farm, school, city, forest, river, home, office, hospital, mountain, market). Appends consistent environment context to every matching scene.
-
-### 40.4 Prompt Template Builder — `prompt_template_builder.py`
-
-Single assembly point. Pipeline:
-```
-character inject → location inject → cinematic wrap → style modifier
-```
-
-Used by `image_generator._build_prompt()`.
-
-### Config Flags
-
-```json
-{
-  "enable_cinematic_prompt_engine": true,
-  "enable_character_anchor": true,
-  "enable_location_anchor": true
-}
-```
+**Quality suffix:** `cinematic storytelling, ultra realistic, film still, shallow depth of field, 4k`
 
 ---
 
-## 41. Character Reference System (v7.4)
+## 43. Character Reference System (v7.4)
 
-Generates one portrait image per character and reuses it across all scenes for visual consistency. Scene image count is unchanged — portraits are pre-generated before the main scene loop.
-
-### 41.1 Character Profile Generator — `character_profile_generator.py`
-
-Scans story scenes to detect main characters. Builds structured profiles stored in `characters.json`.
-
-```json
-[
-  {
-    "id": "farmer_story001",
-    "role": "farmer",
-    "description": "young Indian farmer, mid-30s, brown skin, short black hair, thin mustache, wearing white kurta and dhoti",
-    "reference_image": "characters/farmer_story001_reference.png"
-  }
-]
-```
-
-### 41.2 Character Reference Manager — `character_reference_manager.py`
-
-Generates portrait images for each character using the existing image generation API (full provider chain). Saves to `characters/<char_id>_reference.png`. Skips generation if file already exists.
-
-Portrait prompt template:
-```
-portrait photo of {description}, studio lighting, ultra realistic, neutral background, sharp focus, professional headshot, 4k
-```
-
-### 41.3 Reference Prompt Engine — `reference_prompt_engine.py`
-
-When a reference image exists, injects `"the same farmer as shown in the reference image"` into scene prompts. Falls back to text description anchor if no reference exists.
+Generates one portrait image per character and reuses it across all scenes for visual consistency.
 
 ### Pipeline Flow
 
@@ -1724,37 +1325,23 @@ character_reference_manager   ← generates portrait images (once per story)
       ↓
 prompt_template_builder.activate_reference_engine()
       ↓
-image_generator               ← scene images (count unchanged)
-```
-
-### Config Flags
-
-```json
-{
-  "enable_character_reference_system": true,
-  "enable_reference_conditioning": true
-}
+image_generator               ← scene images with character consistency
 ```
 
 ---
 
-## 42. Advanced Configuration Reference — ragai_advanced_config.json
-
-All new modules are controlled by `ragai_advanced_config.json` in the project root. Set any flag to `false` to disable that feature — the system reverts to original behaviour.
+## 44. Advanced Configuration Reference — ragai_advanced_config.json
 
 ```json
 {
   "enable_language_engine": true,
   "enable_story_knowledge_graph": true,
   "enable_scene_composer": true,
-  "enable_style_engine": true,
   "enable_emotion_detection": true,
   "enable_render_optimizer": true,
   "enable_qa_engine": true,
   "enable_prompt_optimizer": true,
   "enable_manual_topic_mode": true,
-  "enable_manual_script_mode": true,
-  "enable_mic_narration_mode": true,
   "enable_cinematic_prompt_engine": true,
   "enable_character_anchor": true,
   "enable_location_anchor": true,
@@ -1763,122 +1350,178 @@ All new modules are controlled by `ragai_advanced_config.json` in the project ro
 }
 ```
 
+Set any flag to `false` to disable that feature — system reverts to original behaviour.
+
 ---
 
-## 43. Complete Project Structure Reference (v7.4)
+## 45. Complete Project Structure Reference (v8.0)
 
 ```
 ragai/
 │
-├── Core Pipeline
+├── Core Pipeline (v8.0 updated)
 │   ├── ragai.py                    Entry point — GUI/CLI dispatch
 │   ├── config.py                   .env loading and AppConfig dataclass
 │   ├── models.py                   All enums, dataclasses, constants, exceptions
 │   ├── pipeline.py                 5-stage pipeline orchestrator
 │   ├── story_generator.py          Stage 2 — Groq LLaMA story/scene generation
-│   ├── image_generator.py          Stage 3 — 4-provider image chain + cinematic prompts
+│   ├── image_generator.py          Stage 3 — 4-provider image chain
 │   ├── voice_synthesizer.py        Stage 4 — Edge-TTS / gTTS (11 languages)
-│   ├── video_assembler.py          Stage 5 — FFmpeg Ken Burns + QSV encode
-│   ├── style_detector.py           Auto-detect visual style from topic keywords
+│   ├── video_assembler.py          Stage 5 — v8.0: contain+blur KB, safe pan, BGM fix
+│   ├── style_detector.py           v8.0: FFmpeg 8.x colorbalance (rs/gs/bs)
 │   ├── audio_transcriber.py        Groq Whisper transcription + audio splitting
-│   ├── image_importer.py           User image loading, validation, resize
+│   ├── image_importer.py           v8.0: original quality preserved, no forced resize
 │   ├── music_selector.py           BGM selection by style + keyword scoring
 │
 ├── Content Intelligence
-│   ├── topic_quality_engine.py     Topic scoring (emotion/curiosity/relatability)
-│   ├── engagement_predictor.py     CTR + watch time prediction
-│   ├── narrative_variation_engine.py  5 narrative structures rotation
-│   ├── visual_variation_engine.py  Per-scene Ken Burns motion variation
-│   ├── content_variation_engine.py Voice/music/pacing profile rotation
-│   ├── story_archive.py            SQLite story memory + duplicate detection
-│   ├── thumbnail_ab_tester.py      3-variant A/B testing with Wilson CTR scoring
+│   ├── topic_quality_engine.py, engagement_predictor.py
+│   ├── narrative_variation_engine.py, visual_variation_engine.py
+│   ├── content_variation_engine.py, story_archive.py
+│   ├── thumbnail_ab_tester.py
 │
 ├── Intelligence Layer
-│   ├── language_engine.py          11-language detection + voice/style config
-│   ├── story_knowledge_graph.py    SQLite semantic story graph
-│   ├── scene_composer.py           PIL layer compositor (lighting + effects)
-│   ├── style_engine.py             Channel branding via channel_styles.json
-│   ├── emotion_detector.py         Per-scene emotion arc detection
-│   ├── render_optimizer.py         GPU encoder detection (NVENC/QSV/VAAPI)
-│   ├── qa_engine.py                ffprobe-based video/clip validation
-│   ├── prompt_optimizer.py         Analytics-driven prompt template evolution
+│   ├── language_engine.py, story_knowledge_graph.py
+│   ├── scene_composer.py, style_engine.py
+│   ├── emotion_detector.py, render_optimizer.py
+│   ├── qa_engine.py, prompt_optimizer.py
 │
 ├── Flexible Input Modes
-│   ├── manual_topic_loader.py      topics_manual.txt + queue priority injection
-│   ├── script_loader.py            User script files bypass story_generator
-│   ├── mic_narration_recorder.py   Microphone recording → normalized WAV
-│   ├── audio_sync_engine.py        Narration-to-scene audio splitting
+│   ├── manual_topic_loader.py, script_loader.py
+│   ├── mic_narration_recorder.py, audio_sync_engine.py
 │
 ├── Cinematic Prompt Engine
-│   ├── cinematic_prompt_engine.py  Shot type + lighting style rotation
-│   ├── character_anchor_engine.py  Text-based character consistency
-│   ├── location_anchor_engine.py   Location environment consistency
-│   ├── prompt_template_builder.py  Single prompt assembly entry point
+│   ├── cinematic_prompt_engine.py, character_anchor_engine.py
+│   ├── location_anchor_engine.py, prompt_template_builder.py
 │
 ├── Character Reference System
-│   ├── character_profile_generator.py  Detect + profile story characters
-│   ├── character_reference_manager.py  Generate + cache portrait images
-│   ├── reference_prompt_engine.py      Reference-based prompt injection
+│   ├── character_profile_generator.py
+│   ├── character_reference_manager.py, reference_prompt_engine.py
 │
 ├── Performance
-│   ├── scene_parallel_executor.py  ThreadPoolExecutor (4 workers) for scenes
+│   ├── scene_parallel_executor.py
 │
 ├── Editor V2
-│   ├── editor.py                   RAGAI Editor V2 entry point
-│   ├── editor_gui.py               3-panel Tkinter GUI
-│   ├── editor_config.py            ragai_config.json loader
-│   ├── clip_manager.py             Clip library manager
-│   ├── watcher.py                  watchdog folder monitor
-│   ├── timeline.py                 Drag-and-drop timeline
-│   ├── assembler.py                FFmpeg compilation assembler
-│   ├── auto_pipeline.py            Automated batch compilation
-│   ├── topic_engine.py             Hashtag-based clip grouping
-│   ├── hook_generator.py           AI hook intro generator
-│   ├── outro_generator.py          Subscribe outro generator
-│   ├── variation_engine.py         Content variation engine
-│   ├── thumbnail_generator.py      Viral thumbnail composer
+│   ├── editor.py, editor_gui.py, editor_config.py
+│   ├── clip_manager.py, watcher.py, timeline.py
+│   ├── assembler.py, auto_pipeline.py, topic_engine.py
+│   ├── hook_generator.py, outro_generator.py
+│   ├── variation_engine.py, thumbnail_generator.py
 │
 ├── Automation
-│   ├── job_manager.py              Job state + crash recovery
-│   ├── scheduler.py                Automated topic queue runner
+│   ├── job_manager.py, scheduler.py
 │
 ├── Analytics
-│   ├── analytics_engine.py         Video performance analytics
-│   ├── retention_optimizer.py      Watch time optimization
-│   ├── channel_manager.py          Multi-channel management
-│   ├── shorts_generator.py         YouTube Shorts generation
-│   ├── title_generator.py          SEO title generation
-│   ├── viral_scorer.py             Viral potential scoring
-│   ├── trend_fetcher.py            Trending topic fetcher
+│   ├── analytics_engine.py, retention_optimizer.py
+│   ├── channel_manager.py, shorts_generator.py
+│   ├── title_generator.py, viral_scorer.py, trend_fetcher.py
 │
 ├── Config Files
-│   ├── ragai_advanced_config.json  Feature flags for all new modules
-│   ├── ragai_config.json           Global config (output_dir, quality, QSV)
-│   ├── channel_styles.json         Per-channel branding config
-│   ├── characters.json             Character profiles (generated per story)
-│   ├── topics_queue.json           Scheduler topic queue
-│   ├── topics_manual.txt           Manual topic input file
-│
-├── Data Files (runtime, not committed)
-│   ├── jobs_state.json             Job lifecycle state
-│   ├── editor_clips.json           Clip library state
-│   ├── story_archive.db            Story memory database
-│   ├── story_graph.db              Story knowledge graph
-│   ├── prompt_templates.json       Evolved prompt templates
-│   ├── analytics_data.json         Video performance data
+│   ├── ragai_advanced_config.json, ragai_config.json
+│   ├── channel_styles.json, characters.json
+│   ├── topics_queue.json, topics_manual.txt
 │
 ├── Folders
-│   ├── output/                     Generated videos (folder-per-video)
-│   ├── compiled/                   Editor compilation outputs
-│   ├── characters/                 Character reference portrait images
-│   ├── narrations/                 Microphone narration WAV files
-│   ├── scripts/                    User-provided script .txt files
-│   ├── music/                      7 background music tracks
-│   ├── logs/                       Application logs
-│   └── tmp/                        Temporary working files (auto-cleaned)
+│   ├── output/        compiled/      characters/
+│   ├── narrations/    scripts/       music/
+│   ├── logs/          tmp/
 ```
 
 ---
 
-*RAGAI Video Factory v7.4 — AI-powered cinematic video generation with character consistency, multi-language support, and adaptive intelligence.*
-*Built by Kunal with Kiro | March 2026*
+## 46. v8.0 Bug Fixes & Technical Changes
+
+This section documents all fixes applied in v8.0 (April 2026).
+
+### Fix 1 — FFmpeg 8.x colorbalance Parameter Names
+
+**File:** `style_detector.py`
+
+**Problem:** FFmpeg 8.x removed the old short parameter names (`ss`, `sm`, `sh`, `ms`, `mm`, `mh`) from the `colorbalance` filter. Any video using `MYSTERY_DARK` or `ROMANTIC_DRAMA` style would fail with:
+```
+Error applying option 'ss' to filter 'colorbalance': Option not found
+```
+
+**Fix:** Replaced with correct FFmpeg 8.x parameter names:
+- `ss` (shadows) → `rs`, `gs`, `bs` (per channel)
+- `sm` (midtones) → `rm`, `gm`, `bm`
+- `sh` (highlights) → `rh`, `gh`, `bh`
+
+**Affected styles:** MYSTERY_DARK, ROMANTIC_DRAMA
+
+---
+
+### Fix 2 — Background Music Inaudible
+
+**File:** `video_assembler.py` → `_mix_music()`
+
+**Problem:** The TTS voice is mono 24kHz. The music is stereo 44.1kHz. Without explicit resampling, `amix` used the first input's format (mono 24kHz), downmixing the music to near-inaudible levels. Additionally, `amix` with default `normalize=1` halved the output volume.
+
+**Root cause chain:**
+1. Voice: mono 24kHz (Edge-TTS output)
+2. Music: stereo 44.1kHz (mp3 files)
+3. Old `amix` without resampling → music downsampled to mono 24kHz at 0.25 volume
+4. `amix normalize=1` (default) → divides output by 2 → -6dB quieter
+5. `loudnorm` filter outputs at 96kHz by default → some players can't decode
+
+**Fix:**
+```python
+# Voice: normalize to -16 LUFS broadcast standard
+[0:a]aresample=44100,aformat=channel_layouts=stereo,loudnorm=I=-16:TP=-1.5:LRA=11[avoice]
+# Music: resample to 44.1kHz stereo, set -8dB below voice
+[1:a]aloop=loop=-1:size=2e+09,aresample=44100,aformat=channel_layouts=stereo,volume=-8dB,...[amusic]
+# Mix: normalize=0 preserves set levels, force 44100 output
+[avoice][amusic]amix=inputs=2:duration=first:normalize=0,aresample=44100[aout]
+```
+
+**Result:** Voice at -16 LUFS (clear), music at -24 LUFS (audible background), output stereo 44.1kHz AAC.
+
+---
+
+### Fix 3 — Image Distortion (Squish/Stretch)
+
+**Files:** `image_importer.py`, `video_assembler.py`
+
+**Problem 1 — image_importer.py:** `img.resize((width, height))` forced every image to the target dimensions regardless of original aspect ratio. A portrait photo (0.75 ratio) got squashed into landscape (1.75 ratio) — 2.3x horizontal squish.
+
+**Fix:** Images are now saved as-is (original resolution, RGB PNG). No forced resize at import.
+
+**Problem 2 — video_assembler.py Ken Burns:** The scale factor was `max(W_out/img.width, H_out/img.height) * KEN_BURNS_ZOOM_MAX * 1.05` — the extra 1.05 caused over-scaling. The crop used `src_w/zoom × src_h/zoom` which inherited the source's aspect ratio instead of the output's, causing stretch when resizing to `(W_out, H_out)`.
+
+**Fix:** 
+- Scale: `max(W_out/img.width, H_out/img.height) * KEN_BURNS_ZOOM_MAX * 1.02` (minimal safety margin)
+- Crop: `W_out/zoom × H_out/zoom` — always matches output aspect ratio exactly
+
+---
+
+### Fix 4 — Portrait Image Cropping (Head/Feet Cut Off)
+
+**File:** `video_assembler.py`
+
+**Problem:** The Ken Burns `cover` scale (`max`) crops portrait images when placed in landscape output. A 3024×4032 portrait in 1920×1080 landscape would have the top and bottom cut off.
+
+**Fix:** Switched to `contain` scale (`min`) with blurred background:
+1. `contain_scale = min(W_out/img.width, H_out/img.height)` — fits entire image
+2. Blurred version of image fills letterbox/pillarbox bars
+3. Canvas scaled up by `KEN_BURNS_ZOOM_MAX * 1.02` for zoom headroom
+4. `_safe_center()` function ensures Ken Burns pan stays within image content area
+
+**Result:** Full person visible (head to toe), blurred background on sides, Ken Burns zooms into the subject.
+
+---
+
+### Fix 5 — Ken Burns Panning Into Blurred Background
+
+**File:** `video_assembler.py`
+
+**Problem:** After the contain+blur fix, the Ken Burns pan directions (8 fixed directions) could pan to the edges of the scaled canvas, which showed the blurred background instead of the image content.
+
+**Fix:** `_safe_center()` function computes safe pan range:
+- Calculates content bounds in the scaled canvas
+- If content is narrower than crop window (portrait in landscape) → centers crop on content, no horizontal pan
+- If content is taller than crop window → allows vertical pan within content bounds
+- Pan start/end positions are constrained to the safe range
+
+---
+
+*RAGAI Video Factory v8.0 — AI-powered cinematic video generation with full image quality preservation and proper BGM mixing.*
+*Built by Kunal with Kiro | April 2026*

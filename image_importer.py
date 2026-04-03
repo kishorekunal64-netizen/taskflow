@@ -55,9 +55,13 @@ class ImageImporter:
                     f"Cannot open image '{src.name}': {exc}"
                 ) from exc
 
-            resized = img.resize((width, height), Image.LANCZOS)
+            # Keep original image as-is — just convert to RGB and save as PNG.
+            # The Ken Burns stage in video_assembler.py handles all scaling/cropping
+            # to the output resolution while preserving aspect ratio via cover-scale.
+            # Forcing a resize here only degrades quality and causes cropping.
+            img_rgb = img.convert("RGB")
             dest = self.work_dir / f"imported_image_{i:03d}.png"
-            resized.save(dest, format="PNG")
+            img_rgb.save(dest, format="PNG")
             logger.info("Saved resized image %d/%d → %s", i + 1, n_scenes, dest)
             output_paths.append(dest)
 

@@ -1,18 +1,15 @@
 """
-gui.py — Professional animated GUI for RAGAI Video Factory.
+gui.py — RAGAI Video Factory — premium dark UI (v9).
 
 Design:
-  - Deep space dark theme with vibrant neon accents
-  - Animated gradient header (cycling hue)
-  - Glowing buttons with hover pulse
-  - Animated shimmer progress bar
-  - Colour-coded quality cards with glow borders
-  - Animated stage step tracker
-  - Floating particle background
+  - Charcoal / near-black surfaces with subtle borders (no harsh wireframe lines)
+  - Static hero header — white logotype, orange accent, calm typography
+  - Generous padding, rounded progress tracks, soft elevation on cards
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import os
@@ -25,6 +22,16 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
+
+RAGAI_VERSION = "9.0.0"
+
+# Daily quota estimates (free tier) — aligned with scheduler_v2.py
+_GROQ_DAILY = 500_000
+_LEONARDO_DAILY = 150
+_YT_UNITS_DAILY = 10_000
+_GROQ_EST_PER_VIDEO = 50_000
+_LEO_EST_PER_VIDEO = 16
+_QUOTA_FILE = Path("tmp/ragai_quota.json")
 
 from config import AppConfig
 from models import (
@@ -42,29 +49,35 @@ except ImportError:
     _TREND_BOOSTER_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
-# Colour system — Dark theme
+# Colour system — premium dark (charcoal + orange)
 # ---------------------------------------------------------------------------
-BG          = "#080b12"   # deep space black
-BG2         = "#0e1420"   # card background
-BG3         = "#141c2e"   # input background
-BORDER      = "#1e2a42"   # subtle border
+BG          = "#0d0d10"       # app background
+BG_HEADER   = "#121214"       # hero bar (flat, no grain)
+BG_ELEV     = "#16161c"       # raised cards / sidebar
+BG2         = BG_ELEV
+BG3         = "#1e1e26"       # inputs
+BORDER      = "#2a2a34"       # hairline
+BORDER_SOFT = "#25252e"
+LINE        = "#1f1f28"       # separators
 
-# Neon accents
-CYAN        = "#00d4ff"
-MAGENTA     = "#ff00aa"
-ORANGE      = "#ff6b00"
-GREEN_N     = "#00ff88"
-PURPLE      = "#8b5cf6"
-YELLOW_N    = "#ffd700"
+ACCENT      = "#ff5722"
+ACCENT_DIM  = "#c43e1a"
+CYAN        = "#26c6da"
+MAGENTA     = "#e040fb"
+ORANGE      = "#ff5722"
+GREEN_N     = "#66bb6a"
+PURPLE      = "#ab47bc"
+YELLOW_N    = "#ffca28"
 
-FG          = "#e8f0ff"
-FG2         = "#a0aec0"   # bumped up from #6b7a99 for readability
-FG3         = "#3a4560"
+FG          = "#f0f2f5"
+FG_MUTED    = "#9ca3af"
+FG2         = "#a8b0bc"
+FG3         = "#6b7280"
 
-FONT_HERO   = ("Segoe UI", 26, "bold")
-FONT_TITLE  = ("Segoe UI", 13, "bold")
+FONT_HERO   = ("Segoe UI", 24, "bold")
+FONT_TITLE  = ("Segoe UI", 12, "bold")
 FONT_LABEL  = ("Segoe UI", 10)
-FONT_SMALL  = ("Segoe UI", 8)
+FONT_SMALL  = ("Segoe UI", 9)
 FONT_MONO   = ("Consolas", 9)
 FONT_BTN    = ("Segoe UI", 10, "bold")
 
@@ -113,8 +126,47 @@ _DURATION_OPTIONS = [
     ("10 min", 10.0),
 ]
 
-# Pipeline stage names for step tracker
+# Pipeline — horizontal step tracker (legacy compact)
 _STAGES = ["Story", "Images", "Voice", "Assembly", "Done"]
+
+# Vertical pipeline (wireframe) — title + subtitle per row
+_PIPELINE_ROWS = [
+    ("Story", "Groq LLaMA 3.3"),
+    ("Images", "Leonardo → Pollinations"),
+    ("Voice", "Edge-TTS · multi-speaker"),
+    ("Assembly", "FFmpeg 8.x · Ken Burns"),
+    ("Output", "4K H.264 · QSV"),
+]
+
+
+def _load_quota_state() -> dict:
+    """Persisted Groq/Leonardo usage for UI bars (resets daily)."""
+    today = time.strftime("%Y-%m-%d")
+    if not _QUOTA_FILE.exists():
+        return {"date": today, "groq_used": 0, "leonardo_used": 0, "yt_used": 0}
+    try:
+        data = json.loads(_QUOTA_FILE.read_text(encoding="utf-8"))
+        if data.get("date") != today:
+            return {"date": today, "groq_used": 0, "leonardo_used": 0, "yt_used": 0}
+        return data
+    except Exception:
+        return {"date": today, "groq_used": 0, "leonardo_used": 0, "yt_used": 0}
+
+
+def _save_quota_state(data: dict) -> None:
+    try:
+        _QUOTA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _QUOTA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _record_quota_after_video() -> dict:
+    st = _load_quota_state()
+    st["groq_used"] = min(_GROQ_DAILY, int(st.get("groq_used", 0)) + _GROQ_EST_PER_VIDEO)
+    st["leonardo_used"] = min(_LEONARDO_DAILY, int(st.get("leonardo_used", 0)) + _LEO_EST_PER_VIDEO)
+    _save_quota_state(st)
+    return st
 
 
 # ---------------------------------------------------------------------------
@@ -133,157 +185,84 @@ class _QueueLogHandler(logging.Handler):
 
 
 # ---------------------------------------------------------------------------
-# Animated canvas header
+# Canvas helpers — rounded / pill bars (premium feel)
 # ---------------------------------------------------------------------------
-class _AnimatedHeader(tk.Canvas):
-    """Canvas that cycles a gradient, draws the app title,
-    and floats 'Radha' & 'Gauri' as glowing drifting name particles."""
+def _canvas_round_rect(canvas: tk.Canvas, x1: float, y1: float, x2: float, y2: float,
+                       r: float, **kwargs) -> int:
+    """Rounded rectangle via smooth polygon (Tk 8.6+)."""
+    if r <= 0:
+        return canvas.create_rectangle(x1, y1, x2, y2, **kwargs)
+    return canvas.create_polygon(
+        x1 + r, y1,
+        x2 - r, y1,
+        x2, y1,
+        x2, y1 + r,
+        x2, y2 - r,
+        x2, y2,
+        x2 - r, y2,
+        x1 + r, y2,
+        x1, y2,
+        x1, y2 - r,
+        x1, y1 + r,
+        x1, y1,
+        smooth=True,
+        **kwargs,
+    )
 
-    _HUE_PAIRS = [
-        ("#00d4ff", "#8b5cf6"),
-        ("#8b5cf6", "#ff00aa"),
-        ("#ff00aa", "#ff6b00"),
-        ("#ff6b00", "#ffd700"),
-        ("#ffd700", "#00ff88"),
-        ("#00ff88", "#00d4ff"),
-    ]
 
-    # Name particles: (text, color, x_frac, y_frac, speed_x, speed_y, alpha, fade_dir)
-    _NAMES = [
-        {"text": "Radha",  "color": "#ff88cc", "x": 0.12, "y": 0.35,
-         "vx": 0.0003, "vy": -0.0008, "alpha": 0.0, "fade": 1, "size": 14},
-        {"text": "Gauri",  "color": "#88ddff", "x": 0.78, "y": 0.55,
-         "vx": -0.0002, "vy": 0.0006, "alpha": 0.0, "fade": 1, "size": 14},
-        {"text": "✦ Radha", "color": "#ffaaee", "x": 0.55, "y": 0.25,
-         "vx": 0.0001, "vy": 0.0005, "alpha": 0.5, "fade": 1, "size": 10},
-        {"text": "Gauri ✦", "color": "#aaeeff", "x": 0.30, "y": 0.70,
-         "vx": -0.0003, "vy": -0.0004, "alpha": 0.8, "fade": -1, "size": 10},
-    ]
+def _canvas_pill_bar(canvas: tk.Canvas, x0: int, y0: int, w: int, h: int,
+                     pct: float, fill: str, track: str = None) -> None:
+    """Draw a horizontal pill-shaped progress bar (0–100)."""
+    canvas.delete("all")
+    track = track or BG3
+    r = h / 2
+    _canvas_round_rect(canvas, x0, y0, x0 + w, y0 + h, r, fill=track, outline="")
+    fill_w = max(h, int(w * min(100, max(0, pct)) / 100))
+    _canvas_round_rect(canvas, x0, y0, x0 + fill_w, y0 + h, r, fill=fill, outline="")
+
+
+# ---------------------------------------------------------------------------
+# Static hero header (wireframe premium — no grain, no floating particles)
+# ---------------------------------------------------------------------------
+class _PremiumHeader(tk.Frame):
+    """Centered logotype: slate icon + RAGAI + muted tagline."""
 
     def __init__(self, parent, **kw):
-        super().__init__(parent, height=120, bg=BG, highlightthickness=0, **kw)
-        self._phase = 0.0
-        self._pair_idx = 0
-        self._particles = [dict(p) for p in self._NAMES]
-        self._animate()
-
-    def _hex_to_rgb(self, h: str):
-        h = h.lstrip("#")
-        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
-
-    def _lerp_color(self, c1, c2, t):
-        r = int(c1[0] + (c2[0]-c1[0])*t)
-        g = int(c1[1] + (c2[1]-c1[1])*t)
-        b = int(c1[2] + (c2[2]-c1[2])*t)
-        return f"#{r:02x}{g:02x}{b:02x}"
-
-    def _alpha_color(self, hex_color: str, alpha: float) -> str:
-        """Blend hex_color toward BG by alpha (0=invisible, 1=full color)."""
-        bg = self._hex_to_rgb(BG)
-        fg = self._hex_to_rgb(hex_color)
-        r = int(bg[0] + (fg[0]-bg[0])*alpha)
-        g = int(bg[1] + (fg[1]-bg[1])*alpha)
-        b = int(bg[2] + (fg[2]-bg[2])*alpha)
-        return f"#{r:02x}{g:02x}{b:02x}"
-
-    def _animate(self):
-        self.delete("all")
-        w = self.winfo_width() or 900
-        h = 120
-
-        # Gradient background bands
-        pair = self._HUE_PAIRS[self._pair_idx]
-        c1 = self._hex_to_rgb(pair[0])
-        c2 = self._hex_to_rgb(pair[1])
-        bands = 80
-        for i in range(bands):
-            t = i / bands
-            t_mod = (t + 0.25 * math.sin(self._phase + t * math.pi * 2)) % 1.0
-            color = self._lerp_color(c1, c2, t_mod)
-            x0 = int(i * w / bands)
-            x1 = int((i+1) * w / bands) + 1
-            self.create_rectangle(x0, 0, x1, h, fill=color, outline="")
-
-        # Subtle light overlay to soften gradient — removed, keep original dark overlay
-        self.create_rectangle(0, 0, w, h, fill=BG, stipple="gray50", outline="")
-
-        # Glowing bottom border
-        next_pair = self._HUE_PAIRS[(self._pair_idx + 1) % len(self._HUE_PAIRS)]
-        t_line = (math.sin(self._phase) + 1) / 2
-        line_color = self._lerp_color(
-            self._hex_to_rgb(pair[0]), self._hex_to_rgb(next_pair[1]), t_line
+        super().__init__(parent, bg=BG_HEADER, **kw)
+        inner = tk.Frame(self, bg=BG_HEADER)
+        inner.pack(fill=tk.X, padx=32, pady=(22, 18))
+        center = tk.Frame(inner, bg=BG_HEADER)
+        center.pack()
+        icon = tk.Label(
+            center, text="🎬", font=("Segoe UI", 26), fg=ACCENT, bg=BG_HEADER,
         )
-        self.create_rectangle(0, h-3, w, h, fill=line_color, outline="")
-
-        # ── Floating name particles ───────────────────────────────────
-        for p in self._particles:
-            # Update position
-            p["x"] = (p["x"] + p["vx"]) % 1.0
-            p["y"] = (p["y"] + p["vy"]) % 1.0
-
-            # Fade in/out
-            p["alpha"] += p["fade"] * 0.012
-            if p["alpha"] >= 1.0:
-                p["alpha"] = 1.0
-                p["fade"] = -1
-            elif p["alpha"] <= 0.0:
-                p["alpha"] = 0.0
-                p["fade"] = 1
-
-            px = int(p["x"] * w)
-            py = int(p["y"] * h)
-            color = self._alpha_color(p["color"], p["alpha"])
-            size = p["size"]
-
-            # Glow layers (larger, more transparent)
-            for glow_r in range(3, 0, -1):
-                glow_alpha = p["alpha"] * (glow_r / 6)
-                glow_color = self._alpha_color(p["color"], glow_alpha)
-                self.create_text(px + glow_r, py + glow_r,
-                                 text=p["text"],
-                                 font=("Segoe UI", size, "bold"),
-                                 fill=glow_color, anchor="center")
-
-            # Main text
-            self.create_text(px, py, text=p["text"],
-                             font=("Segoe UI", size, "bold"),
-                             fill=color, anchor="center")
-
-        # ── App title ─────────────────────────────────────────────────
-        cx = w // 2
-        # Shadow
-        self.create_text(cx+2, 44, text="🎬  RAGAI",
-                         font=("Segoe UI", 26, "bold"), fill="#000000", anchor="center")
-        # Main title
-        self.create_text(cx, 42, text="🎬  RAGAI",
-                         font=("Segoe UI", 26, "bold"), fill=line_color, anchor="center")
-        # Subtitle
-        self.create_text(cx, 78, text="AI  VIDEO  FACTORY  ·  CINEMATIC  4K",
-                         font=("Segoe UI", 10, "bold"), fill=FG2, anchor="center")
-
-        # Advance
-        self._phase += 0.04
-        if self._phase > math.pi * 2:
-            self._phase = 0.0
-            self._pair_idx = (self._pair_idx + 1) % len(self._HUE_PAIRS)
-
-        self.after(50, self._animate)
+        icon.pack(side=tk.LEFT, padx=(0, 12))
+        stack = tk.Frame(center, bg=BG_HEADER)
+        stack.pack(side=tk.LEFT)
+        tk.Label(
+            stack, text="RAGAI", font=("Segoe UI", 22, "bold"),
+            fg="#ffffff", bg=BG_HEADER,
+        ).pack(anchor="w")
+        tk.Label(
+            stack, text="AI VIDEO FACTORY · CINEMATIC 4K",
+            font=("Segoe UI", 9), fg=FG_MUTED, bg=BG_HEADER,
+        ).pack(anchor="w", pady=(2, 0))
+        tk.Frame(self, bg=LINE, height=1).pack(fill=tk.X, side=tk.BOTTOM)
 
 
 # ---------------------------------------------------------------------------
 # Animated shimmer progress bar
 # ---------------------------------------------------------------------------
 class _ShimmerBar(tk.Canvas):
-    """Custom animated progress bar with shimmer sweep."""
+    """Animated pill track with soft shimmer (no harsh border)."""
 
     def __init__(self, parent, **kw):
-        super().__init__(parent, height=8, bg=BG3,
-                         highlightthickness=1, highlightbackground=BORDER, **kw)
+        super().__init__(parent, height=10, bg=BG_ELEV, highlightthickness=0, **kw)
         self._active = False
         self._shimmer_x = 0
-        self._color = CYAN
+        self._color = ACCENT
 
-    def start(self, color=CYAN):
+    def start(self, color=ACCENT):
         self._active = True
         self._color = color
         self._shimmer_x = 0
@@ -292,9 +271,10 @@ class _ShimmerBar(tk.Canvas):
     def stop(self, success=True):
         self._active = False
         self.delete("all")
-        w = self.winfo_width() or 800
-        fill = GREEN_N if success else "#e05c5c"
-        self.create_rectangle(0, 0, w, 8, fill=fill, outline="")
+        w = max(40, self.winfo_width() or 360)
+        h = 10
+        fill = GREEN_N if success else "#e57373"
+        _canvas_round_rect(self, 0, 0, w, h, h / 2, fill=fill, outline="")
 
     def reset(self):
         self._active = False
@@ -304,74 +284,60 @@ class _ShimmerBar(tk.Canvas):
         if not self._active:
             return
         self.delete("all")
-        w = self.winfo_width() or 800
-        # Base fill
-        self.create_rectangle(0, 0, w, 8, fill=BG3, outline="")
-        # Animated fill (bouncing)
+        w = max(40, self.winfo_width() or 360)
+        h = 10
+        _canvas_round_rect(self, 0, 0, w, h, h / 2, fill=BG3, outline="")
         t = (math.sin(self._shimmer_x * 0.05) + 1) / 2
-        fill_w = int(w * (0.3 + 0.5 * t))
-        self.create_rectangle(0, 0, fill_w, 8, fill=self._color, outline="")
-        # Shimmer sweep
+        fill_w = int(w * (0.28 + 0.48 * t))
+        _canvas_round_rect(self, 0, 0, fill_w, h, h / 2, fill=self._color, outline="")
         sx = int((self._shimmer_x % w))
-        sw = 80
+        sw = 72
         for i in range(sw):
-            alpha = 1.0 - abs(i - sw//2) / (sw//2)
-            r, g, b = 255, 255, 255
-            c = f"#{int(r*alpha):02x}{int(g*alpha):02x}{int(b*alpha):02x}"
-            self.create_line(sx + i, 0, sx + i, 8, fill=c)
-        self._shimmer_x += 4
-        self.after(30, self._animate)
+            alpha = max(0.0, 1.0 - abs(i - sw // 2) / (sw // 2))
+            c = f"#{int(255*alpha):02x}{int(255*alpha):02x}{int(255*alpha):02x}"
+            self.create_line(sx + i, 1, sx + i, h - 1, fill=c)
+        self._shimmer_x += 5
+        self.after(28, self._animate)
 
 
 # ---------------------------------------------------------------------------
 # Glow button
 # ---------------------------------------------------------------------------
 class _GlowButton(tk.Frame):
-    """Button with animated glow border on hover."""
+    """Primary / secondary button — subtle ring, calm hover (no jitter)."""
 
-    def __init__(self, parent, text, command, color=CYAN,
+    def __init__(self, parent, text, command, color=ACCENT,
                  bg_btn=BG2, fg_btn=FG, width=None, font=FONT_BTN, **kw):
         super().__init__(parent, bg=color, padx=2, pady=2)
         self._color = color
         self._bg = bg_btn
-        self._active = False
+        self._fg = fg_btn
         inner_kw = {"width": width} if width else {}
         self._btn = tk.Button(
             self, text=text, command=command,
             bg=bg_btn, fg=fg_btn,
             activebackground=color, activeforeground="#ffffff",
-            relief=tk.FLAT, bd=0, padx=16, pady=9,
+            relief=tk.FLAT, bd=0, padx=20, pady=12,
             font=font, cursor="hand2", **inner_kw,
         )
         self._btn.pack(fill=tk.BOTH, expand=True)
         self._btn.bind("<Enter>", self._on_enter)
         self._btn.bind("<Leave>", self._on_leave)
-        self._glow_phase = 0
 
     def _on_enter(self, _=None):
-        self._active = True
         self._btn.config(bg=self._color, fg="#ffffff")
-        self._pulse()
+        self.config(bg=self._color, padx=3, pady=3)
 
     def _on_leave(self, _=None):
-        self._active = False
-        self._btn.config(bg=self._bg, fg=FG)
+        self._btn.config(bg=self._bg, fg=self._fg)
         self.config(bg=self._color, padx=2, pady=2)
-
-    def _pulse(self):
-        if not self._active:
-            return
-        self._glow_phase += 0.3
-        pad = int(2 + math.sin(self._glow_phase) * 1.5)
-        self.config(padx=pad, pady=pad)
-        self.after(40, self._pulse)
 
     def config_state(self, state):
         self._btn.config(state=state)
         if state == "disabled":
             self._btn.config(bg=BG3, fg=FG3)
         else:
-            self._btn.config(bg=self._bg, fg=FG)
+            self._btn.config(bg=self._bg, fg=self._fg)
 
 
 # ---------------------------------------------------------------------------
@@ -455,23 +421,129 @@ class _StepTracker(tk.Canvas):
 
 
 # ---------------------------------------------------------------------------
+# Pipeline step indicator (numbered circles — wireframe)
+# ---------------------------------------------------------------------------
+class _StepDot(tk.Canvas):
+    """28×28 circle: idle (grey #) · active (orange #) · done (green ✓)."""
+
+    def __init__(self, parent, index: int, **kw):
+        super().__init__(parent, width=28, height=28, bg=BG_ELEV, highlightthickness=0, **kw)
+        self._n = index
+        self.set_idle()
+
+    def set_idle(self) -> None:
+        self.delete("all")
+        self.create_oval(3, 3, 25, 25, fill=BG3, outline=BORDER, width=1)
+        self.create_text(14, 14, text=str(self._n), fill=FG3,
+                         font=("Segoe UI", 10, "bold"))
+
+    def set_active(self) -> None:
+        self.delete("all")
+        self.create_oval(3, 3, 25, 25, fill=ACCENT, outline=ACCENT, width=0)
+        self.create_text(14, 14, text=str(self._n), fill="#ffffff",
+                         font=("Segoe UI", 10, "bold"))
+
+    def set_done(self) -> None:
+        self.delete("all")
+        self.create_oval(3, 3, 25, 25, fill=GREEN_N, outline=GREEN_N, width=0)
+        self.create_text(14, 14, text="✓", fill="#ffffff",
+                         font=("Segoe UI", 11, "bold"))
+
+
+# ---------------------------------------------------------------------------
+# Vertical pipeline (wireframe right column)
+# ---------------------------------------------------------------------------
+class _VerticalPipeline(tk.Frame):
+    """Five-step vertical status: Story → … → Output."""
+
+    def __init__(self, parent, rows: list[tuple[str, str]], **kw):
+        super().__init__(parent, bg=BG_ELEV, **kw)
+        self._rows = rows
+        self._idx = -1
+        self._dots: list[_StepDot] = []
+        self._status: list[tk.Label] = []
+        for i, (title, sub) in enumerate(rows):
+            row = tk.Frame(self, bg=BG_ELEV)
+            row.pack(fill=tk.X, pady=(0, 10))
+            dot = _StepDot(row, i + 1)
+            dot.pack(side=tk.LEFT, padx=(0, 10))
+            self._dots.append(dot)
+            mid = tk.Frame(row, bg=BG_ELEV)
+            mid.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            tk.Label(mid, text=title, font=("Segoe UI", 10, "bold"), fg=FG, bg=BG_ELEV, anchor="w").pack(anchor="w")
+            tk.Label(mid, text=sub, font=FONT_SMALL, fg=FG_MUTED, bg=BG_ELEV, anchor="w").pack(anchor="w")
+            st = tk.Label(row, text="Waiting", font=FONT_SMALL, fg=FG3, bg=BG_ELEV, width=16, anchor="e")
+            st.pack(side=tk.RIGHT)
+            self._status.append(st)
+        self.reset()
+
+    def reset(self):
+        self._idx = -1
+        for d in self._dots:
+            d.set_idle()
+        for st in self._status:
+            st.config(text="Waiting", fg=FG3)
+
+    def set_from_progress(self, stage: str, scene: int, total: int):
+        sl = stage.lower()
+        if "story" in sl:
+            self._apply_active(0, scene, total)
+        elif "image" in sl:
+            self._apply_active(1, scene, total)
+        elif "voice" in sl:
+            self._apply_active(2, scene, total)
+        elif "assembly" in sl:
+            self._apply_active(3, scene, total)
+
+    def _apply_active(self, active_idx: int, scene: int, total: int):
+        self._idx = active_idx
+        for j in range(active_idx):
+            self._dots[j].set_done()
+            self._status[j].config(text="Done", fg=GREEN_N)
+        self._dots[active_idx].set_active()
+        if active_idx == 1 and total > 0:
+            self._status[active_idx].config(
+                text=f"{scene} / {total}", fg=ACCENT)
+        elif active_idx == 2 and total > 0:
+            self._status[active_idx].config(
+                text=f"{scene} / {total}", fg=ACCENT)
+        elif active_idx == 3:
+            self._status[active_idx].config(text="FFmpeg…", fg=ACCENT)
+            self._dots[4].set_idle()
+            self._status[4].config(text="Waiting", fg=FG3)
+        else:
+            self._status[active_idx].config(text="In progress…", fg=ACCENT)
+        for j in range(active_idx + 1, len(self._dots)):
+            if j == 4 and active_idx == 3:
+                continue
+            self._dots[j].set_idle()
+            self._status[j].config(text="Waiting", fg=FG3)
+
+    def complete_all(self):
+        for d in self._dots:
+            d.set_done()
+        for st in self._status:
+            st.config(text="Done", fg=GREEN_N)
+
+
+# ---------------------------------------------------------------------------
 # Pill selector (source / format)
 # ---------------------------------------------------------------------------
 class _PillSelector(tk.Frame):
-    def __init__(self, parent, options, variable, color=CYAN, **kw):
-        super().__init__(parent, bg=BG2, **kw)
+    def __init__(self, parent, options, variable, color=ACCENT, **kw):
+        super().__init__(parent, bg=BG_ELEV, **kw)
         self._var = variable
         self._btns = {}
         self._color = color
         for label, val in options:
             btn = tk.Button(
-                self, text=label, font=("Segoe UI", 9, "bold"),
-                bg=BG3, fg=FG2, relief=tk.FLAT, bd=0,
-                padx=14, pady=7, cursor="hand2",
+                self, text=label, font=("Segoe UI", 10, "bold"),
+                bg=BG3, fg=FG_MUTED, relief=tk.FLAT, bd=0,
+                padx=16, pady=9, cursor="hand2",
                 activebackground=color, activeforeground="#ffffff",
                 command=lambda v=val: self._select(v),
             )
-            btn.pack(side=tk.LEFT, padx=(0, 4))
+            btn.pack(side=tk.LEFT, padx=(0, 6))
             self._btns[val] = btn
         variable.trace_add("write", lambda *_: self._refresh())
         self._refresh()
@@ -493,7 +565,7 @@ class _PillSelector(tk.Frame):
 # ---------------------------------------------------------------------------
 class _ChipSelector(tk.Frame):
     def __init__(self, parent, options, variable, color=PURPLE, **kw):
-        super().__init__(parent, bg=BG2, **kw)
+        super().__init__(parent, bg=BG_ELEV, **kw)
         self._var = variable
         self._btns = {}
         self._color = color
@@ -525,15 +597,15 @@ class _ChipSelector(tk.Frame):
 # ---------------------------------------------------------------------------
 class _QualityGrid(tk.Frame):
     def __init__(self, parent, variable, **kw):
-        super().__init__(parent, bg=BG2, **kw)
+        super().__init__(parent, bg=BG_ELEV, **kw)
         self._var = variable
         self._frames = {}
         for q in QualityPreset:
             card_bg, glow, label = _Q_THEME[q]
             spec = _Q_SPEC[q]
             f = tk.Frame(self, bg=card_bg, cursor="hand2",
-                         highlightthickness=2, highlightbackground=BORDER,
-                         padx=10, pady=10)
+                         highlightthickness=1, highlightbackground=BORDER_SOFT,
+                         padx=12, pady=12)
             f.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 6))
             icon_lbl = tk.Label(f, text=label.split()[0], font=("Segoe UI", 20),
                                 bg=card_bg, fg=glow)
@@ -557,7 +629,7 @@ class _QualityGrid(tk.Frame):
         cur = self._var.get()
         for q, (f, il, nl, sl, card_bg, glow) in self._frames.items():
             sel = cur == q.value
-            f.config(highlightbackground=glow if sel else BORDER,
+            f.config(highlightbackground=glow if sel else BORDER_SOFT,
                      highlightthickness=2 if sel else 1,
                      bg=card_bg)
             for w in (il, nl, sl):
@@ -569,7 +641,7 @@ class _QualityGrid(tk.Frame):
 # ---------------------------------------------------------------------------
 def _entry(parent, var, **kw) -> tk.Entry:
     return tk.Entry(parent, textvariable=var, bg=BG3, fg=FG,
-                    insertbackground=CYAN, relief=tk.FLAT, bd=6,
+                    insertbackground=ACCENT, relief=tk.FLAT, bd=8,
                     font=FONT_LABEL, **kw)
 
 
@@ -577,9 +649,9 @@ def _combo(parent, var, values, width=18) -> ttk.Combobox:
     s = ttk.Style()
     s.theme_use("clam")
     s.configure("N.TCombobox", fieldbackground=BG3, background=BG3,
-                foreground=FG, selectbackground=CYAN, selectforeground=BG,
-                arrowcolor=CYAN, bordercolor=BORDER,
-                lightcolor=BORDER, darkcolor=BORDER)
+                foreground=FG, selectbackground=ACCENT, selectforeground="#ffffff",
+                arrowcolor=FG_MUTED, bordercolor=BORDER_SOFT,
+                lightcolor=BORDER_SOFT, darkcolor=BORDER_SOFT)
     s.map("N.TCombobox", fieldbackground=[("readonly", BG3)],
           foreground=[("readonly", FG)])
     return ttk.Combobox(parent, textvariable=var, values=values,
@@ -587,12 +659,18 @@ def _combo(parent, var, values, width=18) -> ttk.Combobox:
                         style="N.TCombobox", font=FONT_LABEL)
 
 
-def _card(parent, title: str, accent=CYAN) -> tk.Frame:
-    outer = tk.Frame(parent, bg=accent, padx=1, pady=1)
-    inner = tk.Frame(outer, bg=BG2, padx=12, pady=10)
+def _card(parent, title: str, accent=ACCENT) -> tk.Frame:
+    """Raised card: hairline border + accent rule under title (no loud orange frame)."""
+    outer = tk.Frame(parent, bg=BG, highlightthickness=0)
+    inner = tk.Frame(
+        outer, bg=BG_ELEV,
+        highlightthickness=1, highlightbackground=BORDER_SOFT,
+        padx=20, pady=18,
+    )
     inner.pack(fill=tk.BOTH, expand=True)
     tk.Label(inner, text=title, font=("Segoe UI", 9, "bold"),
-             fg=accent, bg=BG2).pack(anchor="w", pady=(0, 8))
+             fg=FG_MUTED, bg=BG_ELEV).pack(anchor="w", pady=(0, 8))
+    tk.Frame(inner, bg=accent, height=2).pack(fill=tk.X, pady=(0, 14))
     return inner
 
 
@@ -606,7 +684,7 @@ class RAGAIApp(tk.Tk):
         self.app_config = app_config
         self.title("RAGAI — AI Video Factory")
         self.configure(bg=BG)
-        self.minsize(900, 820)
+        self.minsize(1120, 820)
         self.resizable(True, True)
 
         self._queue: Optional[queue.Queue] = None
@@ -625,26 +703,35 @@ class RAGAIApp(tk.Tk):
     def _setup_ttk_style(self):
         s = ttk.Style(self)
         s.theme_use("clam")
-        s.configure("TNotebook", background=BG, borderwidth=0, tabmargins=[0, 0, 0, 0])
-        s.configure("TNotebook.Tab", background=BG2, foreground=FG2,
-                    padding=[20, 10], font=("Segoe UI", 10, "bold"), borderwidth=0)
-        s.map("TNotebook.Tab",
-              background=[("selected", BG3), ("active", BG3)],
-              foreground=[("selected", CYAN), ("active", FG)])
+        s.configure("TNotebook", background=BG, borderwidth=0, tabmargins=[2, 2, 0, 0])
+        s.configure(
+            "TNotebook.Tab",
+            background=BG2,
+            foreground=FG_MUTED,
+            padding=[18, 11],
+            font=("Segoe UI", 10),
+            borderwidth=0,
+        )
+        s.map(
+            "TNotebook.Tab",
+            background=[("selected", BG3), ("active", BG3)],
+            foreground=[("selected", ACCENT), ("active", FG2)],
+        )
         s.configure("TScrollbar", background=BG3, troughcolor=BG,
-                    bordercolor=BORDER, arrowcolor=FG2, relief=tk.FLAT)
+                    bordercolor=BORDER, arrowcolor=FG3, relief=tk.FLAT)
 
     # ------------------------------------------------------------------
     # Layout
     # ------------------------------------------------------------------
     def _build_ui(self):
-        # Animated header
-        self._header = _AnimatedHeader(self)
+        self._header = _PremiumHeader(self)
         self._header.pack(fill=tk.X)
 
-        # Notebook
+        self._build_top_bar()
+
+        # Notebook — inset for breathable layout
         self._nb = ttk.Notebook(self)
-        self._nb.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        self._nb.pack(fill=tk.BOTH, expand=True, padx=14, pady=(4, 12))
 
         settings_host = tk.Frame(self._nb, bg=BG)
         self._nb.add(settings_host, text="  ⚙  Settings  ")
@@ -655,28 +742,194 @@ class RAGAIApp(tk.Tk):
         log_host = tk.Frame(self._nb, bg=BG)
         self._nb.add(log_host, text="  📋  Live Log  ")
 
+        sched_host = tk.Frame(self._nb, bg=BG)
+        self._nb.add(sched_host, text="  ⏱  Scheduler  ")
+
+        trends_host = tk.Frame(self._nb, bg=BG)
+        self._nb.add(trends_host, text="  📈  Trends  ")
+
         self._build_settings(settings_host)
         self._build_scenes_tab(scenes_host)
         self._build_log(log_host)
+        self._build_scheduler_tab(sched_host)
+        self._build_trends_tab(trends_host)
         self._build_statusbar()
+        self._refresh_quota_bars()
+        self.after(30_000, self._quota_tick)
 
     def _build_statusbar(self):
-        bar = tk.Frame(self, bg=BG2)
+        bar = tk.Frame(self, bg=BG_ELEV)
         bar.pack(fill=tk.X, side=tk.BOTTOM)
-        tk.Frame(bar, bg=CYAN, height=1).pack(fill=tk.X)
-        row = tk.Frame(bar, bg=BG2, padx=14, pady=6)
+        tk.Frame(bar, bg=LINE, height=1).pack(fill=tk.X)
+        row = tk.Frame(bar, bg=BG_ELEV, padx=18, pady=8)
         row.pack(fill=tk.X)
-        self._status_var = tk.StringVar(value="Ready  ·  Select a topic and hit Generate")
+        self._status_var = tk.StringVar(value="Select a topic and press Generate")
         tk.Label(row, textvariable=self._status_var,
-                 font=FONT_SMALL, fg=FG2, bg=BG2).pack(side=tk.LEFT)
+                 font=FONT_SMALL, fg=FG_MUTED, bg=BG_ELEV).pack(side=tk.LEFT)
         self._elapsed_var = tk.StringVar(value="")
         tk.Label(row, textvariable=self._elapsed_var,
-                 font=("Segoe UI", 9, "bold"), fg=CYAN, bg=BG2).pack(side=tk.RIGHT)
+                 font=("Segoe UI", 9, "bold"), fg=ACCENT, bg=BG_ELEV).pack(side=tk.RIGHT)
+
+    def _build_top_bar(self):
+        bar = tk.Frame(self, bg=BG_HEADER, padx=20, pady=10)
+        bar.pack(fill=tk.X, after=self._header)
+        tk.Frame(bar, bg=LINE, height=1).pack(fill=tk.X, side=tk.BOTTOM)
+        left = tk.Frame(bar, bg=BG_HEADER)
+        left.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._top_groq_var = tk.StringVar(value="• Groq —")
+        self._top_leo_var = tk.StringVar(value="• Leo —")
+        tk.Label(left, textvariable=self._top_groq_var, font=FONT_SMALL,
+                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 14))
+        self._top_groq_canvas = tk.Canvas(left, bg=BG_HEADER, height=10, width=120,
+                                          highlightthickness=0)
+        self._top_groq_canvas.pack(side=tk.LEFT, padx=(0, 18))
+        tk.Label(left, textvariable=self._top_leo_var, font=FONT_SMALL,
+                 fg=FG2, bg=BG_HEADER).pack(side=tk.LEFT, padx=(0, 14))
+        self._top_leo_canvas = tk.Canvas(left, bg=BG_HEADER, height=10, width=120,
+                                          highlightthickness=0)
+        self._top_leo_canvas.pack(side=tk.LEFT)
+        self._top_ready_var = tk.StringVar(value=f"Ready · v{RAGAI_VERSION}")
+        ready_fr = tk.Frame(bar, bg=BG_HEADER)
+        ready_fr.pack(side=tk.RIGHT)
+        self._top_ready_dot = tk.Label(
+            ready_fr, text="●", font=("Segoe UI", 9), fg=GREEN_N, bg=BG_HEADER)
+        self._top_ready_dot.pack(side=tk.LEFT, padx=(0, 6))
+        tk.Label(ready_fr, textvariable=self._top_ready_var, font=("Segoe UI", 10),
+                 fg=FG, bg=BG_HEADER).pack(side=tk.LEFT)
+
+    def _refresh_quota_bars(self):
+        st = _load_quota_state()
+        g_pct = min(100, int(st.get("groq_used", 0) * 100 / max(1, _GROQ_DAILY)))
+        l_pct = min(100, int(st.get("leonardo_used", 0) * 100 / max(1, _LEONARDO_DAILY)))
+        self._top_groq_var.set(
+            f"• Groq {g_pct}%  ({int(st.get('groq_used', 0)):,} / {_GROQ_DAILY:,})")
+        self._top_leo_var.set(
+            f"• Leo {l_pct}%  ({int(st.get('leonardo_used', 0))} / {_LEONARDO_DAILY})")
+        self._draw_mini_bar(self._top_groq_canvas, g_pct)
+        self._draw_mini_bar(self._top_leo_canvas, l_pct)
+        if hasattr(self, "_quota_groq_canvas"):
+            self._draw_quota_block(
+                self._quota_groq_canvas, st.get("groq_used", 0), _GROQ_DAILY, ACCENT)
+            self._draw_quota_block(
+                self._quota_leo_canvas, st.get("leonardo_used", 0), _LEONARDO_DAILY, PURPLE)
+            self._draw_quota_block(
+                self._quota_yt_canvas, st.get("yt_used", 0), _YT_UNITS_DAILY, CYAN)
+            rem = max(0, (_GROQ_DAILY - int(st.get("groq_used", 0))) // _GROQ_EST_PER_VIDEO)
+            self._quota_footer_var.set(f"~{rem} video(s) remaining today (Groq estimate)")
+
+    def _draw_mini_bar(self, canvas: tk.Canvas, pct: int):
+        w = int(canvas.cget("width") or 120)
+        h = 10
+        _canvas_pill_bar(canvas, 0, 0, w, h, float(pct), ACCENT, BG3)
+
+    def _draw_quota_block(self, canvas: tk.Canvas, used: int, limit: int, color: str):
+        w = int(canvas.cget("width") or 340)
+        h = 8
+        pct = min(100, int(used * 100 / max(1, limit)))
+        _canvas_pill_bar(canvas, 0, 0, w, h, float(pct), color, BG3)
+
+    def _quota_tick(self):
+        self._refresh_quota_bars()
+        self.after(30_000, self._quota_tick)
+
+    def _build_scheduler_tab(self, parent: tk.Frame):
+        outer = tk.Frame(parent, bg=BG)
+        outer.pack(fill=tk.BOTH, expand=True, padx=14, pady=12)
+        tk.Label(outer, text="Scheduler status (scheduler_v2.py)",
+                 font=FONT_TITLE, fg=ACCENT, bg=BG).pack(anchor="w")
+        tk.Label(
+            outer,
+            text="Run overnight queue:  python scheduler_v2.py\n"
+                 "Or double-click START_SCHEDULER_V2.bat",
+            font=FONT_SMALL, fg=FG2, bg=BG, justify="left",
+        ).pack(anchor="w", pady=(4, 10))
+        self._sched_status_text = tk.Text(
+            outer, height=16, wrap=tk.WORD, bg=BG3, fg=FG, font=FONT_MONO,
+            relief=tk.FLAT, bd=8, state="disabled",
+        )
+        self._sched_status_text.pack(fill=tk.BOTH, expand=True)
+        row = tk.Frame(outer, bg=BG)
+        row.pack(fill=tk.X, pady=(10, 0))
+        _GlowButton(row, "Refresh status", self._refresh_scheduler_tab,
+                    color=ACCENT, bg_btn=BG2, fg_btn=ACCENT).pack(side=tk.LEFT)
+        self._refresh_scheduler_tab()
+
+    def _refresh_scheduler_tab(self):
+        lines = []
+        p = Path("tmp/scheduler_status.json")
+        if p.exists():
+            try:
+                lines.append(p.read_text(encoding="utf-8"))
+            except Exception as exc:
+                lines.append(f"(read error: {exc})")
+        else:
+            lines.append("No tmp/scheduler_status.json yet — start the scheduler once.")
+        lines.append("")
+        tq = Path("topics_queue.json")
+        if tq.exists():
+            try:
+                topics = json.loads(tq.read_text(encoding="utf-8"))
+                lines.append(f"topics_queue.json: {len(topics)} topic(s) waiting")
+                for i, topic in enumerate(topics[:12]):
+                    lines.append(f"  {i+1}. {topic[:80]}")
+            except Exception as exc:
+                lines.append(f"topics_queue.json: (parse error {exc})")
+        else:
+            lines.append("topics_queue.json: not found")
+        txt = "\n".join(lines)
+        self._sched_status_text.config(state="normal")
+        self._sched_status_text.delete("1.0", tk.END)
+        self._sched_status_text.insert("1.0", txt)
+        self._sched_status_text.config(state="disabled")
+
+    def _build_trends_tab(self, parent: tk.Frame):
+        outer = tk.Frame(parent, bg=BG)
+        outer.pack(fill=tk.BOTH, expand=True, padx=14, pady=12)
+        tk.Label(outer, text="Trend Booster (same controls as Settings)",
+                 font=FONT_TITLE, fg=ACCENT, bg=BG).pack(anchor="w")
+        tk.Label(outer, text="Use keyword + Fetch for SEO angles. Results sync with Settings.",
+                 font=FONT_SMALL, fg=FG2, bg=BG).pack(anchor="w", pady=(2, 10))
+        tb = _card(outer, "🔥  TREND BOOSTER", ACCENT)
+        tb.pack(fill=tk.BOTH, expand=True)
+        tb_topic_row = tk.Frame(tb, bg=BG2)
+        tb_topic_row.pack(fill=tk.X, pady=(0, 8))
+        tk.Label(tb_topic_row, text="Keyword:", font=FONT_LABEL, fg=FG, bg=BG2).pack(
+            side=tk.LEFT, padx=(0, 8))
+        _entry(tb_topic_row, self._trend_kw_var).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tb_row1 = tk.Frame(tb, bg=BG2)
+        tb_row1.pack(fill=tk.X, pady=(0, 6))
+        _GlowButton(tb_row1, "Fetch", self._on_fetch_trends,
+                    color=ACCENT, bg_btn=BG3, fg_btn=ACCENT).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Label(tb_row1, textvariable=self._tb_status_var,
+                 font=FONT_SMALL, fg=FG, bg=BG2, anchor="w").pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Label(tb, text="Trending angle:", font=FONT_LABEL, fg=FG, bg=BG2).pack(anchor="w")
+        self._tb_angle_combo_t = ttk.Combobox(
+            tb, textvariable=self._tb_angle_var, values=[], state="readonly", width=70,
+            font=FONT_LABEL,
+        )
+        self._tb_angle_combo_t.pack(fill=tk.X, pady=(2, 6))
+        self._tb_angle_combo_t.bind("<<ComboboxSelected>>", lambda _: self._on_angle_selected())
+        row3 = tk.Frame(tb, bg=BG2)
+        row3.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(row3, text="Viral Score:", font=FONT_LABEL, fg=FG, bg=BG2).pack(side=tk.LEFT)
+        tk.Label(row3, textvariable=self._tb_score_var, font=("Segoe UI", 11, "bold"),
+                 fg=FG, bg=BG2).pack(side=tk.LEFT, padx=(8, 0))
+        tk.Label(tb, text="Suggested hook:", font=FONT_LABEL, fg=FG, bg=BG2).pack(anchor="w")
+        _entry(tb, self._tb_hook_var).pack(fill=tk.X, pady=(2, 6))
+        tk.Label(tb, textvariable=self._tb_hashtags_var, font=FONT_SMALL, fg=CYAN, bg=BG2,
+                 wraplength=720, justify="left").pack(anchor="w")
 
     def _build_settings(self, parent: tk.Frame):
-        # Scrollable canvas
-        canvas = tk.Canvas(parent, bg=BG, highlightthickness=0)
-        vsb = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        self._trend_kw_var = tk.StringVar(value="")
+
+        split = tk.Frame(parent, bg=BG)
+        split.pack(fill=tk.BOTH, expand=True)
+
+        left_wrap = tk.Frame(split, bg=BG)
+        left_wrap.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(16, 10))
+
+        canvas = tk.Canvas(left_wrap, bg=BG, highlightthickness=0)
+        vsb = ttk.Scrollbar(left_wrap, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=vsb.set)
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -687,16 +940,24 @@ class RAGAIApp(tk.Tk):
         canvas.bind_all("<MouseWheel>",
                         lambda e: canvas.yview_scroll(-1*(e.delta//120), "units"))
 
-        PAD = {"padx": 14, "pady": 5}
+        right = tk.Frame(
+            split, bg=BG_ELEV, width=400,
+            highlightthickness=1, highlightbackground=BORDER_SOFT,
+            padx=20, pady=18,
+        )
+        right.pack(side=tk.RIGHT, fill=tk.Y)
+        right.pack_propagate(False)
+
+        PAD = {"padx": 4, "pady": 8}
 
         # ── Story Source ──────────────────────────────────────────────
-        src = _card(sf, "📖  STORY SOURCE", CYAN)
+        src = _card(sf, "📖  STORY SOURCE", ACCENT)
         src.master.pack(fill=tk.X, **PAD)
         self._source_var = tk.StringVar(value="topic")
         _PillSelector(src, [
-            ("🖊  Topic", "topic"), ("📄  Script", "script"),
-            ("🎙  Audio", "audio"), ("🖼  Images", "image"),
-        ], self._source_var, color=CYAN).pack(anchor="w", pady=(0, 10))
+            ("Topic", "topic"), ("Script", "script"),
+            ("Audio", "audio"), ("Images", "image"),
+        ], self._source_var, color=ACCENT).pack(anchor="w", pady=(0, 10))
 
         self._src_input_host = tk.Frame(src, bg=BG2)
         self._src_input_host.pack(fill=tk.X)
@@ -705,22 +966,21 @@ class RAGAIApp(tk.Tk):
         self._on_source_change()
 
         # ── Trend Booster ─────────────────────────────────────────────
-        tb = _card(sf, "🔥  TREND BOOSTER", ORANGE)
+        tb = _card(sf, "🔥  TREND BOOSTER", ACCENT)
         tb.master.pack(fill=tk.X, **PAD)
 
-        # Topic input inside Trend Booster (synced with _topic_var)
         tb_topic_row = tk.Frame(tb, bg=BG2)
         tb_topic_row.pack(fill=tk.X, pady=(0, 8))
-        tk.Label(tb_topic_row, text="Topic:", font=FONT_LABEL, fg=FG, bg=BG2).pack(side=tk.LEFT, padx=(0, 8))
-        # _topic_var is already created by _build_source_inputs above — share it
-        _entry(tb_topic_row, self._topic_var).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Label(tb_topic_row, text="Keyword for trend analysis:", font=FONT_LABEL, fg=FG, bg=BG2).pack(
+            side=tk.LEFT, padx=(0, 8))
+        _entry(tb_topic_row, self._trend_kw_var).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Row 1: Fetch button + status
         tb_row1 = tk.Frame(tb, bg=BG2)
         tb_row1.pack(fill=tk.X, pady=(0, 6))
-        _GlowButton(tb_row1, "⚡ Fetch Trends", self._on_fetch_trends,
-                    color=ORANGE, bg_btn=BG3, fg_btn=ORANGE).pack(side=tk.LEFT, padx=(0, 10))
-        self._tb_status_var = tk.StringVar(value="Enter topic above and click Fetch Trends")
+        _GlowButton(tb_row1, "Fetch", self._on_fetch_trends,
+                    color=ACCENT, bg_btn=BG3, fg_btn=ACCENT).pack(side=tk.LEFT, padx=(0, 10))
+        self._tb_status_var = tk.StringVar(value="Enter a keyword and click Fetch")
         tk.Label(tb_row1, textvariable=self._tb_status_var,
                  font=FONT_SMALL, fg=FG, bg=BG2, anchor="w").pack(side=tk.LEFT, fill=tk.X, expand=True)
 
@@ -741,18 +1001,18 @@ class RAGAIApp(tk.Tk):
         style = ttk.Style()
         style.configure("TCombobox",
                          fieldbackground=BG3, background=BG3,
-                         foreground=FG, selectbackground=ORANGE,
+                         foreground=FG, selectbackground=ACCENT,
                          selectforeground=BG)
         self._tb_angle_combo.configure(style="TCombobox")
 
-        # Row 3: Viral score meter
+        # Row 3: Viral score meter (wireframe: /100)
         tb_row3 = tk.Frame(tb, bg=BG2)
         tb_row3.pack(fill=tk.X, pady=(0, 6))
         tk.Label(tb_row3, text="Viral Score:", font=FONT_LABEL, fg=FG, bg=BG2).pack(side=tk.LEFT, padx=(0, 8))
         self._tb_score_var = tk.StringVar(value="—")
         self._tb_score_label = tk.Label(
             tb_row3, textvariable=self._tb_score_var,
-            font=("Segoe UI", 11, "bold"), fg=FG, bg=BG2, width=4,
+            font=("Segoe UI", 11, "bold"), fg=FG, bg=BG2, width=8,
         )
         self._tb_score_label.pack(side=tk.LEFT, padx=(0, 10))
         self._tb_score_bar = tk.Canvas(tb_row3, bg=BG3, height=14, width=200,
@@ -760,19 +1020,19 @@ class RAGAIApp(tk.Tk):
         self._tb_score_bar.pack(side=tk.LEFT)
 
         # Row 4: Suggested hook
-        tk.Label(tb, text="Suggested Hook:", font=FONT_LABEL, fg=FG, bg=BG2).pack(anchor="w", pady=(4, 0))
+        tk.Label(tb, text="Suggested hook:", font=FONT_LABEL, fg=FG, bg=BG2).pack(anchor="w", pady=(4, 0))
         self._tb_hook_var = tk.StringVar()
         _entry(tb, self._tb_hook_var).pack(fill=tk.X, pady=(2, 0))
 
-        # Row 5: Auto-boost checkbox
+        # Row 5: Auto-inject checkbox
         tb_row5 = tk.Frame(tb, bg=BG2)
         tb_row5.pack(fill=tk.X, pady=(6, 4))
         self._tb_autoboost_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
-            tb_row5, text="🚀  Auto-boost  (inject trending angles into story prompt)",
+            tb_row5, text="Auto-inject trending angle into story prompt",
             variable=self._tb_autoboost_var,
-            font=FONT_LABEL, fg=ORANGE, bg=BG2,
-            activeforeground=ORANGE, activebackground=BG2,
+            font=FONT_LABEL, fg=ACCENT, bg=BG2,
+            activeforeground=ACCENT, activebackground=BG2,
             selectcolor=BG3,
         ).pack(anchor="w")
 
@@ -780,8 +1040,8 @@ class RAGAIApp(tk.Tk):
         self._tb_hashtags_var = tk.StringVar(value="")
         tk.Label(tb, text="Hashtags:", font=FONT_LABEL, fg=FG, bg=BG2).pack(anchor="w", pady=(4, 0))
         tk.Label(tb, textvariable=self._tb_hashtags_var,
-                 font=FONT_SMALL, fg=CYAN, bg=BG2,
-                 wraplength=600, justify="left").pack(anchor="w", pady=(2, 4))
+                 font=FONT_SMALL, fg=ACCENT, bg=BG2,
+                 wraplength=560, justify="left").pack(anchor="w", pady=(2, 4))
 
         # Internal state
         self._tb_trends: list[str] = []
@@ -838,6 +1098,20 @@ class RAGAIApp(tk.Tk):
         bgm = _card(sf, "🎵  BACKGROUND MUSIC", PURPLE)
         bgm.master.pack(fill=tk.X, **PAD)
 
+        self._bgm_genre_var = tk.StringVar(value="auto")
+        genre_row = tk.Frame(bgm, bg=BG2)
+        genre_row.pack(fill=tk.X, pady=(0, 6))
+        tk.Label(genre_row, text="Style:", font=FONT_LABEL, fg=FG2, bg=BG2).pack(side=tk.LEFT, padx=(0, 8))
+        for label, val in [
+            ("Auto", "auto"), ("Epic", "epic"), ("Mystery", "mystery"),
+            ("Romantic", "romantic"), ("Nature", "nature"),
+        ]:
+            tk.Button(
+                genre_row, text=label, font=("Segoe UI", 9, "bold"),
+                bg=BG3, fg=FG2, relief=tk.FLAT, bd=0, padx=8, pady=5, cursor="hand2",
+                command=lambda v=val: self._select_bgm_genre(v),
+            ).pack(side=tk.LEFT, padx=(0, 4))
+
         bgm_row = tk.Frame(bgm, bg=BG2)
         bgm_row.pack(fill=tk.X)
 
@@ -852,7 +1126,7 @@ class RAGAIApp(tk.Tk):
         _GlowButton(bgm_row, "✕ Clear", self._clear_bgm,
                     color=FG3, bg_btn=BG3, fg_btn=FG2).pack(side=tk.LEFT)
 
-        tk.Label(bgm, text="Auto mode scores all tracks against your topic keywords",
+        tk.Label(bgm, text="Auto mode scores all tracks; genre picks a specific file from music/",
                  font=FONT_SMALL, fg=FG3, bg=BG2).pack(anchor="w", pady=(4, 0))
 
         # ── Quality ───────────────────────────────────────────────────
@@ -886,60 +1160,103 @@ class RAGAIApp(tk.Tk):
         self._output_dir_var = tk.StringVar(value="./output")
         _entry(out_row, self._output_dir_var).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
         _GlowButton(out_row, "Browse…", self._browse_output_dir,
-                    color=GREEN_N, bg_btn=BG3).pack(side=tk.LEFT)
+                    color=GREEN_N, bg_btn=BG3).pack(side=tk.LEFT, padx=(0, 6))
+        _GlowButton(out_row, "Open", self._open_output_dir,
+                    color=GREEN_N, bg_btn=BG3, fg_btn=FG).pack(side=tk.LEFT)
 
-        # ── Action buttons ────────────────────────────────────────────
-        btn_row = tk.Frame(sf, bg=BG)
-        btn_row.pack(fill=tk.X, padx=14, pady=(10, 6))
-
-        self._gen_btn = _GlowButton(
-            btn_row, "▶   GENERATE VIDEO", self._on_generate,
-            color=CYAN, bg_btn="#0a1a2a", fg_btn=CYAN,
-            font=("Segoe UI", 12, "bold"),
-        )
-        self._gen_btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-
-        self._cancel_btn = _GlowButton(
-            btn_row, "✕  Cancel", self._on_cancel,
-            color="#e05c5c", bg_btn="#1a0a0a", fg_btn="#e05c5c",
-        )
-        self._cancel_btn.pack(side=tk.LEFT, padx=(0, 8))
-        self._cancel_btn.config_state("disabled")
-
-        self._folder_btn = _GlowButton(
-            btn_row, "📂  Open Folder", self._open_output_dir,
-            color=GREEN_N, bg_btn=BG3, fg_btn=FG2,
-        )
-        self._folder_btn.pack(side=tk.LEFT)
-        self._folder_btn.config_state("disabled")
-
-        # ── Step tracker ──────────────────────────────────────────────
-        self._step_tracker = _StepTracker(sf, _STAGES)
-        self._step_tracker.pack(fill=tk.X, padx=14, pady=(8, 2))
-
-        # ── Shimmer progress bar ──────────────────────────────────────
-        self._shimmer = _ShimmerBar(sf)
-        self._shimmer.pack(fill=tk.X, padx=14, pady=(4, 2))
-
-        # Stage label
-        self._stage_var = tk.StringVar(value="")
-        tk.Label(sf, textvariable=self._stage_var,
-                 font=("Segoe UI", 9, "italic"), fg=CYAN, bg=BG,
-                 ).pack(anchor="w", padx=16, pady=(2, 0))
-
-        # Thumbnail
+        # Thumbnail preview (left column)
         self._thumb_label = tk.Label(sf, bg=BG, bd=0)
         self._thumb_label.pack(pady=(10, 6))
+
+        # ── Right column: generate, pipeline, quotas, recent ─────────
+        tk.Label(right, text="PIPELINE", font=("Segoe UI", 9, "bold"), fg=FG_MUTED, bg=BG_ELEV).pack(anchor="w")
+        self._gen_btn = _GlowButton(
+            right, "▶  GENERATE VIDEO", self._on_generate,
+            color=ACCENT_DIM, bg_btn=ACCENT, fg_btn="#ffffff",
+            font=("Segoe UI", 12, "bold"),
+        )
+        self._gen_btn.pack(fill=tk.X, pady=(6, 10))
+
+        self._shimmer = _ShimmerBar(right)
+        self._shimmer.pack(fill=tk.X, pady=(0, 12))
+
+        self._v_pipeline = _VerticalPipeline(right, _PIPELINE_ROWS)
+        self._v_pipeline.pack(fill=tk.X, pady=(0, 14))
+
+        self._stage_var = tk.StringVar(value="")
+        tk.Label(right, textvariable=self._stage_var,
+                 font=("Segoe UI", 9), fg=FG_MUTED, bg=BG_ELEV,
+                 wraplength=360, justify="left").pack(anchor="w", pady=(0, 10))
+
+        tk.Label(right, text="API QUOTA TODAY", font=("Segoe UI", 9, "bold"),
+                 fg=FG, bg=BG_ELEV).pack(anchor="w", pady=(0, 6))
+        self._quota_footer_var = tk.StringVar(value="")
+        for lab, attr, lim, col in [
+            ("Groq (tokens)", "_quota_groq_canvas", _GROQ_DAILY, ACCENT),
+            ("Leonardo (credits)", "_quota_leo_canvas", _LEONARDO_DAILY, MAGENTA),
+            ("YouTube API (units)", "_quota_yt_canvas", _YT_UNITS_DAILY, CYAN),
+        ]:
+            tk.Label(right, text=lab, font=FONT_SMALL, fg=FG_MUTED, bg=BG_ELEV).pack(anchor="w", pady=(4, 0))
+            c = tk.Canvas(right, bg=BG_ELEV, height=10, width=340, highlightthickness=0)
+            c.pack(fill=tk.X, pady=(2, 0))
+            setattr(self, attr, c)
+        tk.Label(right, textvariable=self._quota_footer_var, font=FONT_SMALL,
+                 fg=FG3, bg=BG_ELEV).pack(anchor="w", pady=(6, 10))
+
+        tk.Label(right, text="RECENT VIDEOS", font=("Segoe UI", 9, "bold"),
+                 fg=FG, bg=BG_ELEV).pack(anchor="w", pady=(0, 4))
+        recent_fr = tk.Frame(right, bg=BG3, height=180, highlightthickness=1,
+                             highlightbackground=BORDER_SOFT)
+        recent_fr.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        recent_fr.pack_propagate(False)
+        self._recent_inner = tk.Frame(recent_fr, bg=BG3)
+        self._recent_inner.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        self._refresh_recent_videos()
+
+        foot = tk.Frame(right, bg=BG_ELEV)
+        foot.pack(fill=tk.X, side=tk.BOTTOM)
+        self._cancel_btn = _GlowButton(
+            foot, "Cancel", self._on_cancel,
+            color="#e05c5c", bg_btn="#1a0a0a", fg_btn="#e05c5c",
+        )
+        self._cancel_btn.pack(fill=tk.X, pady=(0, 6))
+        self._cancel_btn.config_state("disabled")
+        self._folder_btn = _GlowButton(
+            foot, "Open Folder", self._open_output_dir,
+            color=YELLOW_N, bg_btn=BG3, fg_btn=YELLOW_N,
+        )
+        self._folder_btn.pack(fill=tk.X)
+        self._folder_btn.config_state("disabled")
+
+        # Horizontal step tracker removed — vertical pipeline on the right
+        self._step_tracker = None
+
+        self._output_dir_var.trace_add("write", lambda *_: self._refresh_recent_videos())
 
     # ------------------------------------------------------------------
     # Source input panels
     # ------------------------------------------------------------------
+    def _sync_topic_from_text(self, _event=None):
+        if hasattr(self, "_topic_text"):
+            self._topic_var.set(self._topic_text.get("1.0", tk.END).strip())
+
     def _build_source_inputs(self, parent: tk.Frame):
         self._topic_frame = tk.Frame(parent, bg=BG2)
-        tk.Label(self._topic_frame, text="Topic:", font=FONT_LABEL,
-                 fg=FG2, bg=BG2).pack(side=tk.LEFT, padx=(0, 8))
+        tk.Label(self._topic_frame, text="Describe your story:", font=FONT_LABEL,
+                 fg=FG2, bg=BG2).pack(anchor="w", pady=(0, 4))
         self._topic_var = tk.StringVar()
-        _entry(self._topic_frame, self._topic_var).pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._topic_text = tk.Text(
+            self._topic_frame, height=5, width=60, bg=BG3, fg=FG,
+            insertbackground=ACCENT, relief=tk.FLAT, bd=8, font=FONT_LABEL,
+            wrap=tk.WORD,
+        )
+        self._topic_text.pack(fill=tk.X, expand=True)
+        self._topic_text.bind("<KeyRelease>", self._sync_topic_from_text)
+        tk.Label(
+            self._topic_frame,
+            text="e.g. A poor farmer who saves his village from drought",
+            font=FONT_SMALL, fg=FG3, bg=BG2,
+        ).pack(anchor="w", pady=(4, 0))
 
         self._script_frame = tk.Frame(parent, bg=BG2)
         self._script_var = tk.StringVar()
@@ -994,9 +1311,9 @@ class RAGAIApp(tk.Tk):
             )
             return
 
+        kw = self._trend_kw_var.get().strip() if hasattr(self, "_trend_kw_var") else ""
         topic = self._topic_var.get().strip() if hasattr(self, "_topic_var") else ""
-        # Use "india trending" as fallback topic so fetch always works
-        fetch_topic = topic if topic else "india trending"
+        fetch_topic = kw or topic or "india trending"
 
         self._tb_status_var.set("⏳ Fetching trends...")
 
@@ -1020,15 +1337,19 @@ class RAGAIApp(tk.Tk):
         self._tb_angle_combo.configure(values=angles)
         self._tb_angle_combo.current(0)
         self._tb_angle_var.set(angles[0])
+        if hasattr(self, "_tb_angle_combo_t"):
+            self._tb_angle_combo_t.configure(values=angles)
+            self._tb_angle_combo_t.current(0)
 
         # Update viral score
         self._tb_viral_score = viral
         score_colors = {"red": "#ff4444", "yellow": YELLOW_N, "green": GREEN_N}
         color = score_colors.get(viral.score_color, FG2)
-        self._tb_score_var.set(f"{viral.score}/10")
+        s100 = viral.score * 10
+        self._tb_score_var.set(f"{s100}/100")
         self._tb_score_label.configure(fg=color)
 
-        # Draw score bar
+        # Draw score bar (0–100)
         self._tb_score_bar.delete("all")
         bar_w = int(200 * viral.score / 10)
         self._tb_score_bar.create_rectangle(0, 0, bar_w, 14, fill=color, outline="")
@@ -1047,9 +1368,11 @@ class RAGAIApp(tk.Tk):
         """When user picks a different angle, re-score and update hook."""
         if not _TREND_BOOSTER_AVAILABLE or not self._tb_trends:
             return
+        kw = self._trend_kw_var.get().strip() if hasattr(self, "_trend_kw_var") else ""
         topic = self._topic_var.get().strip() if hasattr(self, "_topic_var") else ""
+        base = kw or topic
         selected = self._tb_angle_var.get()
-        viral = score_topic(topic, [selected])
+        viral = score_topic(base, [selected])
         self._tb_hook_var.set(viral.hook_line)
 
     def _get_trend_context(self) -> str:
@@ -1273,6 +1596,8 @@ class RAGAIApp(tk.Tk):
             filetypes=[("Audio", "*.mp3 *.wav *.m4a *.ogg *.flac"), ("All", "*.*")])
         if p:
             self._bgm_path = p
+            if hasattr(self, "_bgm_genre_var"):
+                self._bgm_genre_var.set("auto")
             self._bgm_label.config(text=f"🎵  {Path(p).name}", fg=GREEN_N)
         else:
             self._bgm_path = None
@@ -1280,7 +1605,67 @@ class RAGAIApp(tk.Tk):
 
     def _clear_bgm(self):
         self._bgm_path = None
+        if hasattr(self, "_bgm_genre_var"):
+            self._bgm_genre_var.set("auto")
         self._bgm_label.config(text="Auto-selected from story", fg=FG2)
+
+    def _select_bgm_genre(self, val: str):
+        self._bgm_path = None
+        self._bgm_genre_var.set(val)
+        if val == "auto":
+            self._bgm_label.config(text="Auto-selected from story", fg=FG2)
+            return
+        name = {"epic": "epic.mp3", "mystery": "mystery.mp3",
+                "romantic": "romantic.mp3", "nature": "nature.mp3"}.get(val, "")
+        self._bgm_label.config(text=f"Genre → music/{name}", fg=GREEN_N)
+
+    def _resolve_bgm_path(self) -> Optional[str]:
+        if self._bgm_path:
+            return self._bgm_path
+        g = self._bgm_genre_var.get() if hasattr(self, "_bgm_genre_var") else "auto"
+        if g == "auto":
+            return None
+        name = {"epic": "epic.mp3", "mystery": "mystery.mp3",
+                "romantic": "romantic.mp3", "nature": "nature.mp3"}.get(g)
+        if not name:
+            return None
+        p = Path("music") / name
+        return str(p.resolve()) if p.exists() else None
+
+    def _refresh_recent_videos(self):
+        if not hasattr(self, "_recent_inner"):
+            return
+        for w in self._recent_inner.winfo_children():
+            w.destroy()
+        root = Path(self._output_dir_var.get().strip() or "./output")
+        if not root.is_dir():
+            tk.Label(self._recent_inner, text="Output folder not found.",
+                     font=FONT_SMALL, fg=FG3, bg=BG3).pack(anchor="w")
+            return
+        dirs = sorted(
+            [p for p in root.iterdir() if p.is_dir() and (p / "video.mp4").exists()],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )[:8]
+        if not dirs:
+            tk.Label(self._recent_inner, text="No videos yet.",
+                     font=FONT_SMALL, fg=FG3, bg=BG3).pack(anchor="w")
+            return
+        for d in dirs:
+            meta = d / "metadata.txt"
+            title = d.name
+            if meta.exists():
+                try:
+                    line = meta.read_text(encoding="utf-8", errors="ignore").splitlines()[0]
+                    if line.strip():
+                        title = line.strip()[:48]
+                except Exception:
+                    pass
+            row = tk.Frame(self._recent_inner, bg=BG3)
+            row.pack(fill=tk.X, pady=2)
+            tk.Label(row, text="●", font=FONT_SMALL, fg=GREEN_N, bg=BG3).pack(side=tk.LEFT)
+            tk.Label(row, text=title, font=FONT_SMALL, fg=FG, bg=BG3,
+                     wraplength=280, justify="left").pack(side=tk.LEFT, fill=tk.X, expand=True)
 
     def _browse_images(self):
         paths = filedialog.askopenfilenames(
@@ -1320,6 +1705,7 @@ class RAGAIApp(tk.Tk):
     # Generate
     # ------------------------------------------------------------------
     def _on_generate(self):
+        self._sync_topic_from_text()
         source = self._source_var.get()
         topic = self._topic_var.get().strip()
         script_file = self._script_var.get().strip() or None
@@ -1364,7 +1750,7 @@ class RAGAIApp(tk.Tk):
             scene_count=self._scene_count_var.get(),
             quality=QualityPreset(self._quality_var.get()),
             target_duration_minutes=self._duration_var.get(),
-            custom_music_path=self._bgm_path or None,
+            custom_music_path=self._resolve_bgm_path(),
             hf_token=self.app_config.hf_token,
             trend_context=self._get_trend_context(),
         )
@@ -1390,8 +1776,12 @@ class RAGAIApp(tk.Tk):
         self._gen_btn.config_state("disabled")
         self._cancel_btn.config_state("normal")
         self._folder_btn.config_state("disabled")
-        self._shimmer.start(CYAN)
-        self._step_tracker.reset()
+        self._shimmer.start(ACCENT)
+        if self._v_pipeline:
+            self._v_pipeline.reset()
+        self._top_ready_var.set("Running…")
+        if hasattr(self, "_top_ready_dot"):
+            self._top_ready_dot.config(fg=ACCENT)
         self._stage_var.set("⏳  Initialising…")
         self._status_var.set("Pipeline running…")
         self._elapsed_var.set("")
@@ -1436,16 +1826,23 @@ class RAGAIApp(tk.Tk):
     def _on_progress(self, stage: str, scene: int, total: int):
         label = f"⚙  {stage}" + (f"  —  scene {scene}/{total}" if total > 0 else "")
         self._stage_var.set(label)
-        self._step_tracker.set_stage(stage)
-        self._nb.select(1)
+        if self._v_pipeline:
+            self._v_pipeline.set_from_progress(stage, scene, total)
 
     def _on_complete(self, result: PipelineResult, pipeline=None):
         elapsed = time.monotonic() - self._start_time
         self._shimmer.stop(success=True)
-        self._step_tracker.complete()
+        if self._v_pipeline:
+            self._v_pipeline.complete_all()
         self._stage_var.set("✅  Complete!")
         self._elapsed_var.set(f"✅  {elapsed:.1f}s")
         self._status_var.set(f"Saved → {result.output_path}")
+        self._top_ready_var.set(f"Ready · v{RAGAI_VERSION}")
+        if hasattr(self, "_top_ready_dot"):
+            self._top_ready_dot.config(fg=GREEN_N)
+        _record_quota_after_video()
+        self._refresh_quota_bars()
+        self._refresh_recent_videos()
         self._gen_btn.config_state("normal")
         self._cancel_btn.config_state("disabled")
         self._folder_btn.config_state("normal")
@@ -1464,6 +1861,9 @@ class RAGAIApp(tk.Tk):
         self._stage_var.set("❌  Error")
         self._elapsed_var.set(f"❌  {elapsed:.1f}s")
         self._status_var.set(f"Error: {exc}")
+        self._top_ready_var.set("Error — see Live Log")
+        if hasattr(self, "_top_ready_dot"):
+            self._top_ready_dot.config(fg="#e57373")
         self._gen_btn.config_state("normal")
         self._cancel_btn.config_state("disabled")
         self._append_log(f"❌ {exc}", "error")

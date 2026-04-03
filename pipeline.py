@@ -23,6 +23,11 @@ from models import (
 from story_generator import StoryGenerator
 from image_generator import ImageGenerator
 from voice_synthesizer import VoiceSynthesizer
+try:
+    from voice_synthesizer_v2 import MultiSpeakerVoiceSynthesizer
+    _MULTI_SPEAKER_AVAILABLE = True
+except ImportError:
+    _MULTI_SPEAKER_AVAILABLE = False
 from video_assembler import VideoAssembler
 from style_detector import StyleDetector
 from audio_transcriber import AudioTranscriber, AudioSplitter
@@ -57,6 +62,15 @@ class Pipeline:
             use_edge_tts=config.use_edge_tts,
             work_dir=self.work_dir / "audio",
         )
+        # Use multi-speaker synthesizer if available and character names are set
+        if _MULTI_SPEAKER_AVAILABLE:
+            self._multi_speaker = MultiSpeakerVoiceSynthesizer(
+                use_edge_tts=config.use_edge_tts,
+                work_dir=self.work_dir / "audio",
+                known_characters=list(config.character_names.values()) if config.character_names else [],
+            )
+        else:
+            self._multi_speaker = None
         self.video_assembler = VideoAssembler(
             work_dir=self.work_dir / "video",
             music_dir=Path("music"),
@@ -280,11 +294,12 @@ class Pipeline:
                 logger.error("Stage 4 (audio splitting) failed: %s", exc)
                 raise
         else:
-            # TOPIC / SCRIPT / IMAGE — existing VoiceSynthesizer logic unchanged
+            # TOPIC / SCRIPT / IMAGE — use multi-speaker if available, else standard
             try:
                 logger.info("Stage 4: Voice synthesis for %d scenes", total_scenes)
+                synth = self._multi_speaker if self._multi_speaker else self.voice_synthesizer
                 for i, scene in enumerate(scenes, start=1):
-                    scene.audio_path = self.voice_synthesizer.synthesize_one(
+                    scene.audio_path = synth.synthesize_one(
                         scene, self.config.language
                     )
                     self._update_progress("voice", i, total_scenes)

@@ -204,22 +204,76 @@ class VideoAssembler:
         n_frames = max(1, round(scene.duration_seconds * FPS))
 
         img = Image.open(scene.image_path).convert("RGB")
-        scale = max(W_out / img.width, H_out / img.height) * KEN_BURNS_ZOOM_MAX * 1.05
-        src_w = int(img.width * scale)
-        src_h = int(img.height * scale)
-        img = img.resize((src_w, src_h), Image.LANCZOS)
-        arr = np.array(img, dtype=np.uint8)
+
+        # Scale strategy: CONTAIN — fit the entire image within the output frame.
+        # Letterbox/pillarbox gaps are filled with a blurred version of the image.
+        # Ken Burns zoom is then applied on top of the full canvas.
+        contain_scale = min(W_out / img.width, H_out / img.height)
+        fit_w = int(img.width * contain_scale)
+        fit_h = int(img.height * contain_scale)
+        fit_img = img.resize((fit_w, fit_h), Image.LANCZOS)
+
+        # Blurred background fills letterbox/pillarbox bars
+        from PIL import ImageFilter
+        bg = img.resize((W_out, H_out), Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=40))
+        canvas = bg.copy()
+        paste_x = (W_out - fit_w) // 2
+        paste_y = (H_out - fit_h) // 2
+        canvas.paste(fit_img, (paste_x, paste_y))
+
+        # Ken Burns operates on the full W_out×H_out canvas
+        # Scale up slightly so zoom-in has room to pan without hitting edges
+        kb_scale = KEN_BURNS_ZOOM_MAX * 1.02
+        src_w = int(W_out * kb_scale)
+        src_h = int(H_out * kb_scale)
+        canvas_scaled = canvas.resize((src_w, src_h), Image.LANCZOS)
+        arr = np.array(canvas_scaled, dtype=np.uint8)
 
         zoom_start = random.uniform(KEN_BURNS_ZOOM_MIN, KEN_BURNS_ZOOM_MAX - 0.04)
         zoom_end   = random.uniform(zoom_start + 0.02, KEN_BURNS_ZOOM_MAX)
 
-        directions = [
-            (0.0, 0.0, 1.0, 1.0), (1.0, 0.0, 0.0, 1.0),
-            (0.0, 1.0, 1.0, 0.0), (1.0, 1.0, 0.0, 0.0),
-            (0.5, 0.0, 0.5, 1.0), (0.5, 1.0, 0.5, 0.0),
-            (0.0, 0.5, 1.0, 0.5), (1.0, 0.5, 0.0, 0.5),
-        ]
-        px0, py0, px1, py1 = random.choice(directions)
+        # Compute the safe pan region: the area of the KB canvas that contains
+        # actual image content (not blurred background padding).
+        kb_ratio = kb_scale  # = KEN_BURNS_ZOOM_MAX * 1.02
+        content_x0 = int(paste_x * kb_ratio)
+        content_y0 = int(paste_y * kb_ratio)
+        content_x1 = int((paste_x + fit_w) * kb_ratio)
+        content_y1 = int((paste_y + fit_h) * kb_ratio)
+
+        # Use tightest crop (zoom_start) to compute safe pan range.
+        # If content is narrower/shorter than the crop window, center the crop
+        # on the content and don't pan in that axis (avoids showing blurred bg).
+        tight_crop_w = int(W_out / zoom_start)
+        tight_crop_h = int(H_out / zoom_start)
+
+        def _safe_center(content_lo: int, content_hi: int,
+                         src_dim: int, crop_dim: int) -> tuple:
+            """Return (p_start, p_end) fractions that keep crop inside content.
+            If content is smaller than crop, center the crop — no pan in this axis."""
+            max_offset = max(src_dim - crop_dim, 1)
+            content_size = content_hi - content_lo
+            if content_size <= crop_dim:
+                # Content fits inside crop — center crop on content, no pan
+                center = (content_lo + content_hi) / 2.0
+                offset = max(0.0, min(center - crop_dim / 2.0, src_dim - crop_dim))
+                frac = offset / max_offset
+                frac = max(0.0, min(frac, 1.0))
+                return frac, frac  # fixed, no pan
+            else:
+                lo = max(0, content_lo) / max_offset
+                hi = min(src_dim, content_hi - crop_dim) / max_offset
+                lo = max(0.0, min(lo, 1.0))
+                hi = max(lo, min(hi, 1.0))
+                return lo, hi
+
+        px_lo, px_hi = _safe_center(content_x0, content_x1, src_w, tight_crop_w)
+        py_lo, py_hi = _safe_center(content_y0, content_y1, src_h, tight_crop_h)
+
+        # Pick start/end pan positions within the safe range
+        px0 = random.uniform(px_lo, (px_lo + px_hi) / 2)
+        px1 = random.uniform((px_lo + px_hi) / 2, px_hi)
+        py0 = random.uniform(py_lo, (py_lo + py_hi) / 2)
+        py1 = random.uniform((py_lo + py_hi) / 2, py_hi)
 
         bar_h = 0
         if fmt == VideoFormat.LANDSCAPE:
@@ -256,8 +310,17 @@ class VideoAssembler:
                 te = _quintic(t)
 
                 zoom   = _lerp(zoom_start, zoom_end, te)
-                crop_w = min(int(src_w / zoom), src_w)
-                crop_h = min(int(src_h / zoom), src_h)
+
+                # Crop region must match the output aspect ratio exactly to
+                # avoid stretch distortion when resizing to (W_out, H_out).
+                # Derive crop size from the output ratio, scaled by 1/zoom.
+                crop_w = min(int(W_out / zoom), src_w)
+                crop_h = min(int(H_out / zoom), src_h)
+
+                # Ensure crop fits inside the source (rounding safety)
+                crop_w = min(crop_w, src_w)
+                crop_h = min(crop_h, src_h)
+
                 max_x  = max(src_w - crop_w, 0)
                 max_y  = max(src_h - crop_h, 0)
                 x = int(_lerp(px0, px1, te) * max_x)
@@ -447,10 +510,19 @@ class VideoAssembler:
 
             filter_complex = (
                 f"[0:v]{color_grade}[vout];"
-                f"[1:a]aloop=loop=-1:size=2e+09,volume=0.25,"
+                # Voice: upmix mono→stereo, resample to 44100 Hz, normalize loudness
+                f"[0:a]aresample=44100,aformat=channel_layouts=stereo,"
+                f"loudnorm=I=-16:TP=-1.5:LRA=11[avoice];"
+                # Music: loop, resample to 44100 stereo, set to -20dB under voice,
+                # fade in/out — no amix normalization so levels are preserved
+                f"[1:a]aloop=loop=-1:size=2e+09,"
+                f"aresample=44100,aformat=channel_layouts=stereo,"
+                f"volume=-8dB,"
                 f"afade=t=in:d={MUSIC_FADE_IN},"
                 f"afade=t=out:st={fade_out_start:.4f}:d={MUSIC_FADE_OUT}[amusic];"
-                f"[0:a][amusic]amix=inputs=2:duration=first[aout]"
+                # Mix: normalize=0 keeps each stream at its set level, force 44100 output
+                f"[avoice][amusic]amix=inputs=2:duration=first:normalize=0,"
+                f"aresample=44100[aout]"
             )
             cmd = (
                 ["ffmpeg", "-y",

@@ -58,7 +58,7 @@ STYLE_COLOR_GRADE: Dict[VisualStyle, str] = {
         "g='0/0 0.15/0.10 0.5/0.46 0.85/0.84 1/0.94':"
         "b='0/0.04 0.15/0.16 0.5/0.54 0.85/0.88 1/1',"
         "eq=contrast=1.45:saturation=0.55:brightness=-0.12,"
-        "colorbalance=ss=-0.08:sm=-0.04:sh=0.06:ms=-0.06:mm=-0.02:mh=0.04"
+        "colorbalance=rs=-0.08:gs=-0.06:bs=0.06:rm=-0.04:gm=-0.02:bm=0.04"
     ),
     # SPIRITUAL DEVOTIONAL — warm saffron-gold lift, soft glow, gentle bloom
     # Sacred / divine look: lifted shadows, warm highlights, soft contrast
@@ -85,7 +85,7 @@ STYLE_COLOR_GRADE: Dict[VisualStyle, str] = {
         "g='0/0.03 0.3/0.32 0.6/0.60 0.9/0.88 1/0.96':"
         "b='0/0.04 0.3/0.30 0.6/0.54 0.9/0.82 1/0.90',"
         "eq=contrast=1.12:saturation=1.30:brightness=0.03,"
-        "colorbalance=ss=0.06:sm=0.04:sh=0.02:ms=0.04:mm=0.02:mh=0.01"
+        "colorbalance=rs=0.06:gs=0.04:bs=0.02:rm=0.04:gm=0.02:bm=0.01"
     ),
     # ADVENTURE ACTION — punchy contrast, vivid saturated, teal-orange grade
     # Marvel / action blockbuster: deep blacks, vivid primaries, orange skin, teal BG
